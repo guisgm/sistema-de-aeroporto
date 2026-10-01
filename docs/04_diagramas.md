@@ -1,0 +1,110 @@
+# Diagramas entidade-relacionamento
+
+Formato Mermaid. Cada módulo inclui seus relacionamentos de entrada e pode repetir entidades de outros módulos para mostrar as referências. O diagrama completo está em `diagrama_completo.mmd`.
+
+Legenda: `||` exatamente um; `o|` zero ou um; `o{` zero ou muitos. São cardinalidades do DDL. Requisitos como “uma reserva deve ter ao menos um item” são validados pelo Java e descritos na modelagem.
+
+Chaves compostas são indicadas pelo nome dos campos no relacionamento. O desenho resume as FKs e não substitui as restrições de exclusão e os índices únicos parciais. A associação de auditoria a entidades é lógica e não usa FK polimórfica.
+
+## Localização, pessoas e acesso
+
+```mermaid
+erDiagram
+    pais ||--o{ cidade : "pais_id"
+    cidade ||--o{ aeroporto : "cidade_id"
+    aeroporto ||--o{ terminal : "aeroporto_id"
+    pais |o--o{ pessoa : "nacionalidade_id"
+    pessoa ||--o{ documento_pessoa : "pessoa_id"
+    pais ||--o{ documento_pessoa : "pais_emissor_id"
+    pessoa ||--o{ contato_pessoa : "pessoa_id"
+    pessoa ||--o| passageiro : "pessoa_id"
+    pessoa ||--o| funcionario : "pessoa_id"
+    cargo ||--o{ funcionario : "cargo_id"
+    aeroporto ||--o{ funcionario : "aeroporto_base_id"
+    companhia_aerea |o--o{ funcionario : "companhia_id"
+    funcionario ||--o| usuario_sistema : "funcionario_id"
+    usuario_sistema ||--o{ usuario_perfil : "usuario_id"
+    perfil_acesso ||--o{ usuario_perfil : "perfil_id"
+```
+
+## Frota e planejamento
+
+```mermaid
+erDiagram
+    pais ||--o{ companhia_aerea : "pais_id"
+    modelo_aeronave ||--o{ aeronave : "modelo_id"
+    companhia_aerea ||--o{ aeronave : "companhia_id"
+    aeronave ||--o{ assento_aeronave : "aeronave_id"
+    aeroporto ||--o{ rota : "origem_id"
+    aeroporto ||--o{ rota : "destino_id"
+    companhia_aerea ||--o{ voo : "companhia_id"
+    rota ||--o{ voo : "rota_id"
+    aeronave ||--o{ voo : "aeronave_id"
+    voo ||--o{ inventario_assento_voo : "voo_id, aeronave_id"
+    assento_aeronave ||--o{ inventario_assento_voo : "assento_id, aeronave_id"
+    aeronave ||--o{ manutencao_aeronave : "aeronave_id"
+    funcionario ||--o{ manutencao_aeronave : "responsavel_id"
+    aeronave ||--o{ agenda_aeronave : "aeronave_id"
+    voo |o--o{ agenda_aeronave : "voo_id, aeronave_id"
+    manutencao_aeronave |o--o{ agenda_aeronave : "manutencao_id, aeronave_id"
+```
+
+## Reservas e financeiro
+
+```mermaid
+erDiagram
+    voo ||--o{ tarifa_voo : "voo_id"
+    pessoa ||--o{ reserva : "comprador_id"
+    usuario_sistema ||--o{ reserva : "usuario_id"
+    reserva ||--o{ item_reserva : "reserva_id"
+    passageiro ||--o{ item_reserva : "passageiro_id"
+    voo ||--o{ item_reserva : "voo_id"
+    tarifa_voo ||--o{ item_reserva : "tarifa_id, voo_id"
+    item_reserva ||--o{ ocupacao_assento : "item_id, voo_id"
+    inventario_assento_voo ||--o{ ocupacao_assento : "inventario_id, voo_id"
+    item_reserva ||--o| bilhete : "item_id"
+    reserva ||--o{ pagamento : "reserva_id"
+    reserva ||--o{ reembolso : "reserva_id"
+    pagamento ||--o{ reembolso : "pagamento_id, reserva_id"
+```
+
+## Atendimento e bagagens
+
+```mermaid
+erDiagram
+    usuario_sistema ||--o{ check_in : "usuario_id"
+    item_reserva ||--o{ check_in : "item_id, voo_id"
+    bilhete ||--o{ check_in : "bilhete_id, item_id"
+    ocupacao_assento ||--o{ check_in : "ocupacao_id, item_id, voo_id"
+    check_in ||--o{ bagagem : "checkin_id"
+    bagagem ||--o{ evento_bagagem : "bagagem_id"
+    aeroporto ||--o{ evento_bagagem : "aeroporto_id"
+    usuario_sistema ||--o{ evento_bagagem : "usuario_id"
+    usuario_sistema ||--o{ embarque : "usuario_id"
+    check_in ||--o{ embarque : "checkin_id, voo_id"
+    alocacao_recurso ||--o{ embarque : "alocacao_id, voo_id"
+```
+
+## Recursos, equipe e operação
+
+```mermaid
+erDiagram
+    aeroporto ||--o{ recurso_aeroportuario : "aeroporto_id"
+    terminal |o--o{ recurso_aeroportuario : "terminal_id, aeroporto_id"
+    funcionario ||--o{ habilitacao_tripulante : "funcionario_id"
+    modelo_aeronave ||--o{ habilitacao_tripulante : "modelo_id"
+    recurso_aeroportuario ||--o{ alocacao_recurso : "recurso_id"
+    voo |o--o{ alocacao_recurso : "voo_id"
+    funcionario ||--o{ escala_funcionario : "funcionario_id"
+    aeroporto ||--o{ escala_funcionario : "aeroporto_id"
+    voo |o--o{ escala_funcionario : "voo_id"
+    voo ||--o{ historico_voo : "voo_id"
+    usuario_sistema |o--o{ historico_voo : "usuario_id"
+    aeroporto ||--o{ ocorrencia_operacional : "aeroporto_id"
+    voo |o--o{ ocorrencia_operacional : "voo_id"
+    usuario_sistema ||--o{ ocorrencia_operacional : "usuario_id"
+    voo ||--o{ servico_solo : "voo_id"
+    aeroporto ||--o{ servico_solo : "aeroporto_id"
+    funcionario ||--o{ servico_solo : "responsavel_id"
+    usuario_sistema |o--o{ evento_auditoria : "usuario_id"
+```

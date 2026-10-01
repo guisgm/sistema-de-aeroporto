@@ -1,0 +1,9 @@
+/target/
+/lib/
+/relatorios/
+/logs/
+/config/application.properties
+*.class
+.idea/
+*.iml
+.vscode/

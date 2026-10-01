@@ -1,0 +1,8 @@
+# Copie para application.properties e informe suas credenciais locais.
+# Não envie o arquivo com senha para o Git ou para outras pessoas.
+db.url=jdbc:postgresql://localhost:5432/sistema_aeroporto
+db.usuario=postgres
+db.senha=
+app.fuso=America/Sao_Paulo
+# Variáveis AEROPORTO_DB_URL, AEROPORTO_DB_USUARIO, AEROPORTO_DB_SENHA,
+# AEROPORTO_FUSO substituem as propriedades correspondentes.
