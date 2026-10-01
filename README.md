@@ -67,11 +67,3 @@ WHERE table_schema = 'aeroporto'
 ```
 
 O resultado esperado é 41. Atualize a conexão e expanda `Schemas → aeroporto → Tabelas`. A instalação cria a estrutura sem dados de demonstração.
-
-## Estado e decisões
-
-O aluno escolheu PostgreSQL e confirmou no DBeaver a mensagem de criação das 41 tabelas com o comando único adotado neste arquivo. A base Java foi compilada com JDK 21 e a opção de ajuda foi executada. Os fluxos com banco ainda precisam ser exercitados após preencher as credenciais locais. Nenhum banco foi alterado durante a criação do código.
-
-Os exemplos de produtos, REST e frameworks do relatório são sugestões de referência. O projeto segue o domínio de aeroporto pelo terminal, com persistência possível por JDBC.
-
-Configure as conexões Java com search_path aeroporto, public, ou qualifique as tabelas como aeroporto.voo. Guarde credenciais em configuração local fora do código. Consulte a modelagem para as regras garantidas pelo banco e as que dependem dos serviços Java.
