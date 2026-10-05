@@ -1,6 +1,25 @@
 # Sistema de aeroporto — Projeto de Programação
 
-Projeto Java 21 pelo terminal, com banco PostgreSQL e documentação da modelagem.
+Sistema com aplicação web operacional AeroHub e base Java 21 pelo terminal, com banco PostgreSQL e documentação da modelagem.
+
+## Executar o AeroHub Web
+
+A aplicação web oferece painel operacional, gestão de voos, passageiros, reservas, check-in, cartão de embarque, companhias, aeronaves, terminais, portões, auditoria e relatórios CSV. Usa React, API local e SQLite persistente. Funciona como simulação independente da base Java/PostgreSQL.
+
+Com Node.js 22.13 ou superior instalado:
+
+```powershell
+npm.cmd install
+npm.cmd run dev
+```
+
+Abra **http://localhost:5173** e selecione um perfil nos acessos de simulação. Para login manual, use `admin@aerohub.local`, `operador@aerohub.local` ou `atendente@aerohub.local`, com senha `AeroHub@2026!`.
+
+Os dados ficam em `data/aerohub.sqlite`. A base inicial contém 144 voos fictícios, 4 companhias, 20 aeronaves, 3 terminais, 12 portões e 24 passageiros. Os dados são criados uma vez e preservados nas execuções seguintes.
+
+Para o pacote compilado, execute `npm.cmd run build` e depois `npm.cmd start`. Verifique as regras com `npm.cmd test` e os fluxos no Chrome com `npm.cmd run test:e2e`.
+
+A arquitetura, os perfis, as regras, os comandos e os limites da simulação estão em [docs/06_aplicacao_web.md](docs/06_aplicacao_web.md).
 
 ## Executar a base Java
 

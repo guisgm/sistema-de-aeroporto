@@ -1,0 +1,10 @@
+node_modules
+dist
+data
+.npm-cache
+artifacts
+test-results
+src
+sql
+docs
+README.md

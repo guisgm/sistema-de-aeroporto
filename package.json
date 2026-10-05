@@ -1,0 +1,33 @@
+{
+  "name": "aerohub-operacoes",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "node server/index.mjs --dev",
+    "build": "vite build",
+    "start": "node server/index.mjs",
+    "test": "node --test tests/*.test.mjs",
+    "test:e2e": "npm run build && playwright test",
+    "format": "prettier --write web server tests scripts playwright.config.mjs",
+    "format:check": "prettier --check web server tests scripts playwright.config.mjs",
+    "demo:sync": "node scripts/sync-demo.mjs"
+  },
+  "dependencies": {
+    "@fontsource/dm-sans": "^5.3.0",
+    "@fontsource/manrope": "^5.3.0",
+    "express": "^5.1.0",
+    "lucide-react": "^0.468.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "zod": "^3.24.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.51.0",
+    "prettier": "^3.9.9",
+    "vite": "^6.1.0"
+  }
+}
