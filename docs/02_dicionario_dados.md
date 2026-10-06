@@ -835,3 +835,16 @@ CREATE INDEX ix_auditoria_entidade ON evento_auditoria(entidade, registro_id, oc
 ```
 
 Consulte o script para as definições completas de função, trigger e visões. As visões não armazenam novos registros.
+
+## Migração 001: atividade dos cadastros
+
+O instalador original continua criando 41 tabelas. Depois dele, aplique `sql/migracoes/001_cadastros_ativos.sql`, inclusive em banco existente. A migração é aditiva e repetível; não apaga dados nem altera chaves ou relacionamentos.
+
+| Tabela | Coluna acrescentada | Tipo / padrão | Regra |
+|---|---|---|---|
+| passageiro | ativo | BOOLEAN NOT NULL DEFAULT TRUE | Inativa somente o papel passageiro; preserva pessoa, funcionário e histórico |
+| cargo | ativo | BOOLEAN NOT NULL DEFAULT TRUE | Cargo inativo não admite novos funcionários |
+| modelo_aeronave | ativo | BOOLEAN NOT NULL DEFAULT TRUE | Modelo inativo não admite novos usos operacionais |
+| rota | ativa | BOOLEAN NOT NULL DEFAULT TRUE | Rota inativa não admite novos voos |
+
+Pessoa conserva seu indicador `ativo`; funcionário usa `desligamento`; aeronave e recurso usam as situações já existentes. Os cadastros não são fisicamente excluídos pelo menu. Preços e condições continuam copiados em `item_reserva`; pagamentos e reembolsos usam as chaves de idempotência originais. Transições de voo usam a trigger de histórico existente. Políticas dos serviços e limites de edição estão em [08_operacao_java.md](08_operacao_java.md).

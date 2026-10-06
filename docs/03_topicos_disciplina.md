@@ -2,7 +2,7 @@
 
 Fonte: arquivo “Relatorio tópicos PDP” fornecido pelo aluno, análise dos slides Boas-vindas e aulas 02 a 05. O relatório contém conceitos ensinados, checklist e sugestões de backend. A presença de um tópico nos slides não prova, por si só, que cada método citado seja obrigatório na entrega. A lista exata de avaliação deve ser conferida com o enunciado do professor.
 
-O pedido do aluno é uma aplicação de aeroporto em Java pelo terminal. Portanto, os exemplos de produtos e REST do relatório são adaptados ao domínio. Esta etapa entrega o banco; os conceitos Java abaixo são um plano de cobertura, não código já implementado.
+O pedido do aluno é uma aplicação de aeroporto em Java pelo terminal. Portanto, os exemplos de produtos e REST do relatório são adaptados ao domínio. As tabelas abaixo preservam o plano original de cobertura; a seção "Cobertura executada" relaciona a implementação atual e não presume que cada API citada no material seja requisito obrigatório.
 
 ## Orientação a objetos e arquitetura
 
@@ -106,7 +106,31 @@ JPA, Servlet, Web Services, REST e GUI aparecem como conteúdos ou sugestões no
 - [x] Diagramas e dicionário de dados.
 - [x] Regras e limites de cada operação.
 - [x] Plano para aplicar os tópicos no Java.
-- [ ] Execução do script em servidor PostgreSQL e verificação das restrições.
+- [x] Execução do script em PostgreSQL 17.11 isolado e verificação das restrições; banco real do usuário pendente.
 - [x] Base Java com menus, repositórios e serviços; escopo atual documentado em `05_base_java.md`.
-- [ ] Implementação dos demais cadastros e fluxos comerciais/operacionais.
+- [x] Implementação dos demais cadastros e fluxos comerciais/operacionais Java, com testes integrados.
 - [ ] Demonstração prática dos tópicos obrigatórios conforme a avaliação do professor.
+
+## Cobertura executada
+
+| Conteúdo | Uso funcional no código atual | Verificação |
+|---|---|---|
+| POO, herança, encapsulamento, equals/hashCode | Pessoa, Passageiro e Funcionario preservados; mesma identidade nos dois papéis | UnidadeTeste e IntegracaoTeste.cadastros |
+| Interfaces, overriding e sobrecarga | Repositórios e exportadores originais; PassageiroServico.buscar por id/nome; criação de cenário com identificador opcional | Compilação e consultas/arquivos no PostgreSQL |
+| Scanner, conversões, switch e loops | Terminal, MenuPrincipal e MenuOperacional; reserva montada antes de gravar | Login e navegação por entrada real do terminal |
+| Vetores e matriz irregular | MapaAssentos: int[], String[], String[][]; posições inexistentes permanecem vazias | UnidadeTeste verifica dimensões, estados e isolamento de cópias; mapa real no terminal |
+| Arrays.sort/binarySearch/fill/copyOf/setAll/equals/deepEquals | Ordenação e localização de fila/coluna, preenchimento de espaços e proteção do mapa; limpeza de senhas preservada | UnidadeTeste e consulta integrada de assentos |
+| ArrayList e generics | Rascunho com add/get/set/remove/contains/indexOf/size/isEmpty/clear/subList; combinação de ids com addAll | Compilação e reserva integrada; testarRascunho foi acrescentado, mas sua última execução ficou bloqueada pela ferramenta de aprovação |
+| Collections.sort/min/max | Resumo de atrasos calcula menor, maior e mediana sem alterar dados persistidos | IntegracaoTeste verifica atraso real e relatórios |
+| Collections.shuffle | Distribuição determinística de inserção dos assentos na massa FICTICIA | Criação e repetição idempotente da massa no PostgreSQL |
+| Collections.reverse e Arrays.toString | Ordem inversa opcional de consultas e cabeçalho de colunas do mapa no terminal | Compilação e execução do mapa; opção de inversão ainda sem teste individual |
+| Strings, regex e StringBuilder | CPF/contatos, códigos, condições comerciais, cabeçalho TAB, seleção de extensões; Locale.ROOT; StringJoiner nos relatórios | UnidadeTeste, importações válidas/inválidas e exportação |
+| Exceções, causa, finally e recursos | RegraNegocioException/PersistenciaException; BancoDados e ArquivosServico; fechamento JDBC/streams; finally do servidor de teste | Rollback por falha injetada, restrições e deadlock real |
+| FileReader/BufferedReader e UTF-8 | Importação TXT tabulada, limitada e transacional | Importação válida e falha na segunda linha sem gravação parcial |
+| FileWriter/BufferedWriter | Relatórios completos TXT/CSV em streaming; exportadores anteriores preservados | Todos os tipos consultados/exportados; CSV com mais de 20 linhas |
+| File/Path/Files e streams de bytes | Validação/listagem de arquivos; cópia em relatorios/backup, SHA-256 verificado | Files.mismatch entre original e cópia |
+| Concorrência | ExecutorService/CountDownLatch nos testes, bloqueios e transações PostgreSQL nos serviços | Venda simultânea do mesmo assento, pagamento com mesma chave e deadlock real |
+
+Os slides Boas-vindas e aulas 02 a 05 foram relidos, incluindo o XML textual dos PPTX. O relatório PDP foi preservado como fonte de sugestões, não como enunciado oficial. Métodos como ArrayList.lastIndexOf e Arrays.deepToString não foram adicionados apenas para constarem no código: se forem obrigatórios na rubrica, será necessário confirmar o uso exigido. GUI/eventos, REST/JPA e empacotamento JAR também não têm obrigatoriedade comprovada para esta entrega pelo terminal. A simulação web anterior não é evidência de cumprimento de uma eventual exigência de GUI Java.
+
+Não foi localizada a rubrica oficial, portanto o último item do checklist permanece pendente. O roteiro oral e os exemplos estão em [09_roteiro_apresentacao.md](09_roteiro_apresentacao.md); a relação completa dos requisitos está em [07_verificacao_lista.md](07_verificacao_lista.md).

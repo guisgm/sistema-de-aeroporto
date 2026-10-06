@@ -2,13 +2,13 @@
 
 ## O que foi entregue
 
-Uma aplicação de terminal Java 21, com JDBC PostgreSQL, configuração externa, primeiro acesso, autenticação, perfis, cadastro e busca de passageiros, consultas de voos/assentos/reservas e exportação de uma página de voos em TXT ou CSV. O driver JDBC é a única dependência de execução fora da JDK.
+Uma aplicação de terminal compatível com Java 21, com JDBC PostgreSQL, configuração externa, primeiro acesso, autenticação, perfis e os fluxos administrativos, comerciais e operacionais descritos em [08_operacao_java.md](08_operacao_java.md). O driver JDBC é a única dependência de execução fora da JDK.
 
-Esta é a base do programa. Não implementa ainda vendas, emissão de bilhetes, pagamentos, expiração, cancelamento, check-in, bagagens, embarque, planejamento de frota, escalas ou manutenção. Nenhuma opção do menu promete executar essas operações. As consultas a voos e reservas leem registros já existentes; a inicialização não inventa voos ou reservas.
+A base inicial foi preservada: opções 1 a 7, entidades, contratos dos repositórios, autenticação, validações, exportadores e esquema original. Opções 8 a 18 agora implementam vendas, bilhetes, pagamentos simulados, expiração, cancelamento, remarcação, check-in, bagagens, embarque, frota, escalas, manutenção, relatórios e arquivos. A inicialização não inventa voos ou reservas; dados fictícios só são criados mediante comando explícito do administrador.
 
 ## Preparar e executar
 
-O computador já tem JDK 21. O banco sistema_aeroporto precisa conter a estrutura criada pelo script único `sql/criar_banco.sql`. Não reexecute a criação se as tabelas já existirem.
+É necessário JDK 21 ou posterior. Neste computador foi localizado JDK 26 em `.jdks`; os scripts compilam com `--release 21`. O banco sistema_aeroporto precisa conter a estrutura criada por `sql/criar_banco.sql`. Não reexecute a criação se as tabelas já existirem. Aplique `executar.ps1 -Migrar` antes do primeiro acesso ou do menu; a migração só adiciona indicadores de atividade.
 
 1. Abra a pasta do sistema no terminal PowerShell.
 2. Preencha `config/application.properties` com a senha e os dados da sua conexão PostgreSQL. O arquivo local foi preparado a partir do exemplo e fica fora do Git e do ZIP de entrega. Em outro computador, copie `config/application.properties.example` para `config/application.properties` antes de preencher.
@@ -64,17 +64,17 @@ src/main/java/br/edu/aeroporto/
 
 Pessoa é uma classe abstrata com estado encapsulado e imutável. Passageiro e Funcionario sobrescrevem identificacao, mantendo o id comum de pessoa. Uma mesma pessoa nos dois papéis é igual por id; não há objetos de domínio com id provisório. Os pedidos de cadastro usam record separado da entidade persistida.
 
-SituacaoVoo e SituacaoReserva são enums que coincidem com o banco. SituacaoVoo inclui a regra de transição prevista no MD, mas ainda não há serviço que altere o voo. Essa regra será utilizada junto às validações operacionais, às agendas e ao histórico.
+SituacaoVoo e SituacaoReserva são enums que coincidem com o banco. VooServico usa a regra de transição junto às validações de janela, equipe, portão, serviços de solo, agendas e histórico. ProgramacaoVoo, Tarifa e PedidoTrecho são contratos de entrada validados; MapaAssentos usa uma matriz real de apresentação sem substituir a persistência relacional.
 
 Resultados de consulta usam records. Dinheiro é BigDecimal; datas civis são LocalDate; TIMESTAMPTZ é lido como OffsetDateTime. O painel usa o fuso da configuração para filtrar um dia inteiro e os fusos dos aeroportos para exibir os horários. A conexão também recebe esse fuso para os cálculos de CURRENT_DATE. Datas inválidas de entrada são tratadas no terminal; nascimento futuro é rejeitado no serviço.
 
 ### Persistência e transações
 
-BancoDados abre e fecha cada conexão e centraliza commit/rollback. Consultas usam uma transação somente de leitura com snapshot consistente (REPEATABLE READ). Escritas usam o isolamento padrão READ COMMITTED; futuras operações comerciais precisam dos bloqueios de linhas previstos na modelagem.
+BancoDados abre e fecha cada conexão e centraliza commit/rollback. Consultas usam uma transação somente de leitura com snapshot consistente (REPEATABLE READ). Escritas usam READ COMMITTED e bloqueios explícitos de linhas. BloqueiosJdbc ordena voos, reservas, itens e inventários; planejamento e cadastros operacionais compartilham bloqueio consultivo. Transações apropriadas podem repetir integralmente após deadlock ou falha de serialização; falha de conexão não é repetida automaticamente.
 
 Sql centraliza PreparedStatement, bind de valores e mapeamento. Nenhuma entrada é concatenada ao SQL. Os recursos usam try-with-resources. Erros SQL são convertidos em mensagens adequadas, com causa preservada. Rollback que falhar é anexado como erro suprimido, preservando a falha original.
 
-O cadastro de passageiro grava pessoa, papel de passageiro, CPF opcional, contatos e auditoria juntos. Qualquer falha desfaz tudo. O CPF é normalizado e seus dígitos verificadores são conferidos. A pessoa pode existir sem CPF, nacionalidade ou contatos, como permite o modelo. Nacionalidade, assistência e outros documentos serão acrescentados em uma etapa posterior.
+O cadastro de passageiro grava pessoa, papel de passageiro, CPF opcional, contatos e auditoria juntos. Qualquer falha desfaz tudo. O CPF é normalizado e seus dígitos verificadores são conferidos. A pessoa pode existir sem CPF, nacionalidade ou contatos, como permite o modelo. Edição, assistência, nacionalidade, documentos adicionais e contatos estão conectados aos serviços. Vincular uma pessoa existente ao papel passageiro conserva seu id; inativar esse papel não desliga o funcionário da mesma pessoa.
 
 A busca de passageiros é paginada em 20 registros; nomes são filtros literais, sem tratar % ou _ como curingas. Consultas de voos também usam 20 registros por página. A consulta de uma reserva usa duas consultas fixas, e não uma consulta por passageiro/trecho. O total apresentado é o preço original dos itens, incluindo cancelados; não representa saldo financeiro e não inclui bagagens.
 
@@ -84,7 +84,7 @@ O primeiro acesso só funciona quando não há usuário cadastrado. Um bloqueio 
 
 ADMINISTRADOR e ATENDIMENTO podem cadastrar passageiros. ADMINISTRADOR, ATENDIMENTO, OPERACAO e CONSULTA podem acessar as consultas atuais, inclusive passageiros e reservas. Perfis adicionais cadastrados no banco exigem política correspondente no Java. A cada operação, autorização consulta novamente o usuário ativo, vínculo e perfis; ela não depende de esconder itens do menu.
 
-Auditoria registra login, primeiro acesso e cadastro de passageiro. O helper definirAutorDoVoo prepara o autor/motivo da trigger existente para futuros serviços de voo. Logs técnicos ficam em logs com rotação e registram tipo de falha/SQLSTATE, sem copiar senha, CPF ou detalhes pessoais da exceção SQL.
+Auditoria registra login, primeiro acesso e as novas operações administrativas, comerciais, operacionais e de arquivos. definirAutorDoVoo prepara o autor/motivo da trigger existente antes das alterações do voo. Logs técnicos ficam em logs com rotação e registram tipo de falha/SQLSTATE, sem copiar senha, CPF ou detalhes pessoais da exceção SQL.
 
 ExportadorVoos tem implementações TXT e CSV para demonstrar polimorfismo real. O relatório contém somente a página consultada, não todos os voos do período. A escrita usa BufferedWriter em UTF-8, um arquivo temporário e publicação após concluir a escrita. O CSV protege aspas, delimitadores e fórmulas de planilha. O diretório relatorios é fixado pela aplicação.
 
@@ -106,9 +106,9 @@ ExportadorVoos tem implementações TXT e CSV para demonstrar polimorfismo real.
 | Arquivos e UTF-8 | Configuração, logs, TXT e CSV |
 | Banco | JDBC, PreparedStatement, transações, paginação e auditoria |
 
-Matriz do mapa de assentos, importação, mini backup, outros métodos de Arrays/Collections e funcionalidades operacionais ainda não foram implementados. O MD dos tópicos permanece como plano de cobertura integral. Não há métodos vazios para fingir a conclusão desses conteúdos.
+MapaAssentos implementa matriz, ordenação, busca binária, preenchimento e cópias defensivas. O rascunho de reserva usa ArrayList para inclusão, edição, remoção, busca de duplicidade e paginação. Relatórios calculam mínimo, máximo e mediana com Collections; dados fictícios usam shuffle. ArquivosServico importa UTF-8 e copia relatórios com conferência SHA-256. A cobertura concreta da disciplina está em [03_topicos_disciplina.md](03_topicos_disciplina.md), sem presumir uma rubrica oficial ausente.
 
-## Próximos incrementos
+## Incrementos implementados
 
 1. Cadastros administrativos de companhias, modelos, aeronaves, assentos e rotas; edição/inativação de pessoas e documentos adicionais.
 2. Programação de voo: agenda da aeronave, inventário de assentos, janelas e tarifas na mesma transação.
@@ -117,10 +117,10 @@ Matriz do mapa de assentos, importação, mini backup, outros métodos de Arrays
 5. Cancelamentos e reembolsos, preservando histórico e respeitando os bloqueios e saldos definidos.
 6. Check-in, bagagens, embarque, recursos, tripulação, manutenção e serviços em solo.
 
-O SQL e as regras dos MDs continuam sendo o contrato de persistência. Novos serviços devem bloquear voos → reservas → itens → inventários → pagamentos, sempre por id crescente dentro de cada grupo, e compartilhar a mesma conexão JDBC entre repositórios. Nenhum serviço deve salvar um estado confirmado sem as entidades dependentes exigidas pelo modelo.
+Os seis grupos acima foram implementados e exercitados nos testes PostgreSQL. O SQL e as regras dos MDs continuam sendo o contrato de persistência. Serviços bloqueiam voos → reservas → itens → inventários → pagamentos e compartilham a mesma conexão JDBC. Confirmação exige cobertura financeira e emissão de bilhetes. Limites de troca de aeronave, remarcação e demais políticas estão explicitados no guia operacional.
 
 ## Validação desta entrega
 
-A compilação foi concluída com o JDK 21 disponível e a execução de executar.ps1 -Ajuda terminou com sucesso. Essa opção é independente do banco. Conexão, primeiro acesso e fluxos com PostgreSQL ainda precisam ser exercitados após preencher as credenciais locais; a entrega não utiliza nem lê a senha salva no DBeaver.
+Compilação para Java 21 com JDK 26, ajuda, 12 verificações unitárias e 103 verificações em PostgreSQL 17.11 isolado foram executadas com sucesso. Primeiro acesso, login real pelo terminal, fluxo completo, restrições, relatórios, arquivos, concorrência e deadlock real foram exercitados. O script de integração criou um banco novo e encerrou somente seu servidor temporário. Depois dessa rodada, foram acrescentados testes complementares de equipe, frota, pagamentos, peças de bagagem e rascunho; a ferramenta de aprovação atingiu limite de uso e impediu compilação/execução dessa ampliação. Esses testes novos não são resultados aprovados. O diagnóstico do banco do usuário confirmou configuração ausente; essa conexão continua pendente e nenhuma senha do DBeaver foi lida. Resultados e limitações: [07_verificacao_lista.md](07_verificacao_lista.md).
 
 Referências: [pgJDBC e versões do driver](https://jdbc.postgresql.org/download/) e [Maven Compiler Plugin](https://maven.apache.org/plugins/maven-compiler-plugin/).

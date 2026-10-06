@@ -23,7 +23,13 @@ A arquitetura, os perfis, as regras, os comandos e os limites da simulação est
 
 ## Executar a base Java
 
-Preencha `config/application.properties` com sua senha e os dados da conexão PostgreSQL. No terminal, dentro desta pasta:
+Preencha `config/application.properties` com sua senha e os dados da conexão PostgreSQL. As credenciais reais não estão no Git. Em banco novo, instale `sql/criar_banco.sql`; em banco existente, não reexecute o instalador. Aplique a migração aditiva antes de abrir o menu:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\executar.ps1 -Migrar
+```
+
+No primeiro acesso, somente se ainda não houver usuário:
 
 ```powershell
 .\executar.ps1 -Inicializar
@@ -35,23 +41,35 @@ Esse comando cria o primeiro administrador e seu aeroporto-base; use-o uma vez. 
 .\executar.ps1
 ```
 
-A base oferece login com perfis, cadastro/busca de passageiros, consultas de voos/assentos/reservas e exportação de uma página de voos em TXT/CSV. O banco precisa ter a estrutura já criada. Vendas, pagamentos, expiração, check-in e demais fluxos operacionais são os próximos incrementos.
+A aplicação Java oferece administração dos cadastros e usuários, programação de voos, tarifas, inventário, agendas, reservas individuais/grupos/conexões, pagamentos simulados, bilhetes, expiração, cancelamento, remarcação e reembolsos. Também conecta check-in, cartões, bagagens, embarque, tripulação, recursos, manutenção, serviços de solo, ocorrências, relatórios completos, importação e cópia verificada de arquivos ao PostgreSQL. A simulação web/SQLite permanece independente; não substitui esses testes nem compartilha o banco Java.
 
 Os scripts compilam com javac e baixam o driver JDBC oficial, dispensando instalação de Maven. Para ajuda sem conectar ao banco, execute `.\executar.ps1 -Ajuda`. Ao receber o projeto em outro computador, copie `config/application.properties.example` para `config/application.properties` e preencha. O arquivo local de credenciais fica fora do pacote e do Git.
 
-O guia detalhado da arquitetura, dos perfis e das próximas etapas está em `docs/05_base_java.md`.
+Os scripts procuram o JDK no PATH, JAVA_HOME e `.jdks`, compilando para Java 21. A execução foi verificada com JDK 26 e PostgreSQL 17.11 em ambiente isolado. O banco real do usuário ainda depende de configuração. Guia: [operação Java](docs/08_operacao_java.md); evidências e pendências dos 88 itens: [verificação](docs/07_verificacao_lista.md); demonstração: [roteiro](docs/09_roteiro_apresentacao.md).
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\testar-java.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\testar-postgres.ps1
+```
+
+O segundo comando exige os binários PostgreSQL indicados no guia. Cria e encerra somente seu próprio cluster fictício em `artifacts`, sem usar ou apagar o banco configurado em `application.properties`.
 
 ## Arquivos
 
-- `sql/criar_banco.sql`: único script de criação das 41 tabelas, schema, extensão, restrições, índices, visões e histórico automático de voos.
+- `sql/criar_banco.sql`: instalador original das 41 tabelas, preservado.
+- `sql/migracoes/001_cadastros_ativos.sql`: migração repetível que adiciona quatro indicadores de atividade, sem apagar registros.
 - `docs/01_modelagem.md`: escopo, entidades, relacionamentos, regras e fluxos.
 - `docs/02_dicionario_dados.md`: atributos, tipos, obrigatoriedade, chaves e restrições.
 - `docs/03_topicos_disciplina.md`: aplicação dos conteúdos da disciplina no Java.
 - `docs/04_diagramas.md`: diagramas entidade-relacionamento por módulo.
-- `docs/05_base_java.md`: execução, organização do código, funcionalidades disponíveis e continuidade.
+- `docs/05_base_java.md`: execução e organização do código Java.
+- `docs/07_verificacao_lista.md`: classificação e evidências de cada requisito, resultados e limitações reais.
+- `docs/08_operacao_java.md`: configuração, migração, menus, regras e testes isolados.
+- `docs/09_roteiro_apresentacao.md`: apresentação oral e demonstração.
 - `src/main/java`: código da aplicação, organizado em pacotes.
 - `pom.xml`: projeto Maven para abrir na IDE.
 - `compilar.ps1` e `executar.ps1`: compilação e execução pelo PowerShell.
+- `testar-java.ps1` e `testar-postgres.ps1`: testes unitários e integração em PostgreSQL isolado.
 - `config/application.properties.example`: exemplo de configuração sem senha.
 
 ## Executar no DBeaver

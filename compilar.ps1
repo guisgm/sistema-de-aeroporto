@@ -1,6 +1,7 @@
 $ErrorActionPreference = 'Stop'
 Push-Location $PSScriptRoot
 try {
+    . (Join-Path $PSScriptRoot 'scripts/configurar-java.ps1')
     if (-not (Get-Command javac -ErrorAction SilentlyContinue)) {
         throw 'Instale um JDK 21 ou superior e configure javac no PATH.'
     }

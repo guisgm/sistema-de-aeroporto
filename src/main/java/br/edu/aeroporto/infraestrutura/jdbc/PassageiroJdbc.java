@@ -14,9 +14,25 @@ import java.util.UUID;
 
 public final class PassageiroJdbc implements PassageiroRepositorio {
     private static final String SELECT = """
-            SELECT p.id, p.nome, p.nascimento, p.ativo, pa.codigo_cliente
+            SELECT p.id, p.nome, p.nascimento, p.ativo AND pa.ativo AS ativo, pa.codigo_cliente
             FROM pessoa p JOIN passageiro pa ON pa.pessoa_id = p.id
             """;
+
+    @Override
+    public Passageiro vincular(Connection c, long pessoaId, String assistencia) throws SQLException {
+        Sql.registro(c, "SELECT id FROM pessoa WHERE id=? AND ativo FOR UPDATE", pessoaId);
+        String codigo="P"+UUID.randomUUID().toString().replace("-", "").substring(0,20).toUpperCase(java.util.Locale.ROOT);
+        Sql.executar(c,"INSERT INTO passageiro(pessoa_id,codigo_cliente,observacoes_assistencia) VALUES (?,?,?) ON CONFLICT (pessoa_id) DO NOTHING",pessoaId,codigo,assistencia);
+        return buscar(c,pessoaId).orElseThrow();
+    }
+
+    @Override
+    public Passageiro editar(Connection c,long id,String nome,LocalDate nascimento,Long nacionalidade,String assistencia,boolean ativo) throws SQLException {
+        Sql.registro(c,"SELECT pessoa_id FROM passageiro WHERE pessoa_id=? FOR UPDATE",id);
+        Sql.executar(c,"UPDATE pessoa SET nome=?,nascimento=?,nacionalidade_id=? WHERE id=?",nome,nascimento,nacionalidade,id);
+        Sql.executar(c,"UPDATE passageiro SET observacoes_assistencia=?,ativo=? WHERE pessoa_id=?",assistencia,ativo,id);
+        return buscar(c,id).orElseThrow();
+    }
 
     @Override
     public Passageiro cadastrar(Connection conexao, CadastroPassageiro cadastro) throws SQLException {

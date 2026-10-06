@@ -34,6 +34,7 @@ public final class AutenticacaoServico {
             Sessao sessao = credenciais.get().sessao();
             if (sessao.perfis().isEmpty()) throw new RegraNegocioException("O usuário não possui perfil de acesso.");
             banco.transacao(conexao -> {
+                new br.edu.aeroporto.infraestrutura.jdbc.AutorizacaoJdbc().exigirConsulta(conexao,sessao);
                 auditoria.registrar(conexao, sessao.usuarioId(), "ENTRAR", "usuario_sistema", sessao.usuarioId());
                 return null;
             });

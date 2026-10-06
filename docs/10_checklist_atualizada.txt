@@ -1,0 +1,117 @@
+LISTA ATUALIZADA DO PROJETO
+
+Legenda:
+✓ = Implementado e validado no ambiente indicado.
+◐ = Parcial ou implementado, mas ainda com validação pendente.
+□ = Pendente por falta de informação, acesso ou recurso.
+
+Situação: 72 itens verificados, 13 parciais e 3 pendentes externos.
+Os resultados PostgreSQL foram obtidos em banco isolado de teste, não no banco real do usuário.
+
+Configuração e validação da base
+- □ Configurar as credenciais locais do PostgreSQL. (Faltam as credenciais reais do banco local.)
+- ◐ Validar conexão, primeiro administrador e login. (Validado no PostgreSQL de teste; falta validar no seu banco real.)
+- ◐ Validar cadastro de passageiros, consultas, auditoria e exportação no banco. (Validado no PostgreSQL de teste; falta validar no seu banco real.)
+- □ Conferir o enunciado e os critérios oficiais de avaliação do professor. (Slides encontrados; faltam o enunciado e a rubrica oficial.)
+Cadastros e administração
+- ✓ Implementar edição e inativação de passageiros.
+- ✓ Completar documentos, contatos, nacionalidade e necessidades de assistência.
+- ✓ Permitir que uma pessoa existente tenha os papéis de passageiro e funcionário.
+- ✓ Implementar cadastro, edição e inativação de funcionários e cargos.
+- ✓ Implementar administração de usuários, perfis, alteração de senha e bloqueio de acesso.
+- ◐ Implementar cadastros de países, cidades, aeroportos e terminais. (Implementado; falta verificação específica do cadastro/edição de países pelo menu.)
+- ✓ Implementar cadastros de portões, pistas, posições, esteiras e balcões.
+- ✓ Implementar cadastros de companhias aéreas e modelos de aeronave.
+- ◐ Implementar cadastro, edição e inativação de aeronaves. (Implementado; testes complementares de edição/inativação ainda não executados.)
+- ✓ Implementar configuração dos assentos físicos das aeronaves.
+- ◐ Implementar cadastro e manutenção das rotas. (Implementado; falta teste específico de edição/inativação das rotas.)
+Planejamento de voos
+- ✓ Implementar cadastro de ocorrências de voo.
+- ✓ Definir horários previstos e janelas de check-in e embarque.
+- ✓ Gerar o inventário de assentos de cada voo.
+- ✓ Implementar tarifas, classes, descontos e condições comerciais.
+- ✓ Criar a agenda da aeronave, incluindo margens de preparação.
+- ✓ Alocar portões, pistas e outros recursos.
+- ✓ Implementar atualização de horários estimados e reais.
+- ✓ Implementar as transições de situação do voo.
+- ✓ Implementar reprogramação, cancelamento e troca de aeronave dentro dos limites documentados.
+- ✓ Atualizar todas as agendas quando houver mudanças no voo.
+Reservas e passagens
+- ◐ Implementar reservas individuais, de grupos e com conexões. (Reservas e conexões testadas nos serviços; falta executar o teste completo do rascunho pelo terminal.)
+- ✓ Vincular comprador, passageiros e trechos corretamente.
+- ✓ Copiar preços e condições da tarifa para os itens vendidos.
+- ✓ Implementar escolha ou atribuição automática de assento.
+- ✓ Validar disponibilidade, bloqueio e classe do assento.
+- ✓ Definir o prazo de confirmação da reserva.
+- ✓ Implementar expiração e liberação de assentos ao iniciar o programa e antes de vender.
+- ✓ Implementar cancelamento de um item ou da reserva inteira.
+- ✓ Recalcular a situação da reserva após alterações nos itens.
+- ✓ Implementar remarcação preservando itens e bilhetes anteriores.
+Pagamentos e reembolsos
+- ◐ Implementar pagamentos simulados e suas situações. (Aprovados/recusados testados; falta executar testes de pendente, aprovação posterior e cancelamento.)
+- ✓ Validar cobertura financeira antes de confirmar a reserva.
+- ✓ Emitir bilhetes após a confirmação.
+- ✓ Impedir duplicação de operações com chaves de idempotência.
+- ✓ Definir e aplicar multas e condições de cancelamento.
+- ✓ Implementar solicitações e processamento de reembolsos.
+- ✓ Impedir devoluções superiores ao valor pago.
+- ✓ Implementar pagamentos complementares, como excesso de bagagem.
+Check-in, bagagens e embarque
+- ✓ Implementar check-in com validação de prazo, documento, bilhete e assento.
+- ✓ Gerar o cartão de embarque.
+- ✓ Implementar cancelamento e realização novamente do check-in.
+- ✓ Implementar despacho, pesagem e etiquetagem de bagagens.
+- ◐ Definir limites de peças, franquia e cobrança de excesso. (Franquia e excesso por peso testados; faltam testes complementares de peças e limite de peso.)
+- ✓ Implementar situações e histórico de rastreio das bagagens.
+- ✓ Tratar retirada, extravio e despacho em conexões.
+- ✓ Implementar embarque com validação de cartão, portão e horário.
+- ✓ Atualizar item e bilhete quando a passagem for utilizada.
+- ✓ Identificar passageiros que não compareceram.
+Equipe e operação aeroportuária
+- ✓ Implementar habilitações de tripulantes e validade das licenças.
+- ✓ Implementar escalas e atribuição de funções.
+- ◐ Definir a quantidade mínima de tripulantes. (Equipe válida testada; falta executar a rejeição por equipe insuficiente.)
+- ◐ Validar descanso, deslocamento e conflitos de jornada. (Escalas e conflitos testados; faltam testes direcionados de descanso e deslocamento.)
+- ◐ Validar continuidade dos deslocamentos das aeronaves. (Planejamento testado; faltam testes direcionados de continuidade e intervalo mínimo.)
+- ✓ Validar disponibilidade, localização e compatibilidade dos recursos.
+- ✓ Implementar interdições de recursos.
+- ✓ Implementar manutenção preventiva, corretiva e inspeções.
+- ✓ Implementar abastecimento, limpeza, catering, bagagens e reboque.
+- ✓ Implementar registro e encerramento de ocorrências operacionais.
+Consultas, relatórios e arquivos
+- ✓ Completar painéis de partidas e chegadas por aeroporto.
+- ✓ Consultar portões, agendas, escalas e históricos.
+- ✓ Completar manifesto de passageiros, embarcados e ausentes.
+- ✓ Implementar consulta de bagagem por etiqueta.
+- ✓ Implementar relatórios de ocupação e atrasos.
+- ✓ Implementar relatórios de vendas, pagamentos e devoluções.
+- ✓ Ampliar a exportação para relatórios completos, além da página atual.
+- ✓ Implementar importação de dados com validação.
+- ✓ Implementar a rotina de cópia/backup de arquivos prevista na disciplina.
+Segurança e consistência
+- ✓ Aplicar permissões em todos os novos serviços.
+- ✓ Registrar auditoria das novas operações.
+- ✓ Garantir transações completas nos fluxos que alteram várias tabelas.
+- ✓ Aplicar a ordem de bloqueios prevista na modelagem.
+- ✓ Tratar operações simultâneas, conflitos e deadlocks.
+- ✓ Tratar falhas de conexão sem deixar dados parcialmente gravados.
+- ✓ Preservar o histórico em cancelamentos e inativações.
+- ✓ Evitar informações pessoais e credenciais nos logs.
+Verificação e entrega da disciplina
+- ✓ Preparar dados fictícios para demonstração.
+- ✓ Verificar regras, restrições, permissões e operações concorrentes.
+- ✓ Verificar o fluxo completo: cadastro → voo → reserva → pagamento → check-in → embarque.
+- ✓ Verificar expiração, cancelamento, reembolso, ausência e falhas.
+- ◐ Implementar os conteúdos restantes de arrays, matrizes, coleções, strings e arquivos exigidos pelo professor. (Conteúdos em uso no código; falta conferir a exigência completa na rubrica oficial.)
+- ✓ Atualizar os MDs conforme cada funcionalidade for concluída.
+- □ Validar a execução em outro computador. (Não houve execução em outra máquina.)
+- ◐ Preparar a apresentação e o roteiro de demonstração (Apresentação oral e roteiro preparados; falta confirmar formato e critérios oficiais.)
+
+OBSERVAÇÕES
+
+- A última rodada executada aprovou 12 verificações unitárias Java e 103 verificações PostgreSQL.
+- Também passaram 22 testes web, 4 testes de navegador, build e verificação de formatação.
+- Testes complementares foram escritos, mas a nova execução foi impedida pelo limite da ferramenta de aprovação. Eles não estão contados como aprovados.
+- A apresentação preparada é oral, com roteiro em Markdown; não foi criado PPTX.
+- A lista não representa uma entrega 100% concluída nem conformidade oficial já comprovada.
+- Evidências e limitações detalhadas: docs/07_verificacao_lista.md.

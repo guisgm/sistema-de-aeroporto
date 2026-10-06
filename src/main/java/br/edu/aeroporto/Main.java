@@ -2,6 +2,7 @@ package br.edu.aeroporto;
 
 import br.edu.aeroporto.cli.MenuPrincipal;
 import br.edu.aeroporto.cli.Terminal;
+import br.edu.aeroporto.cli.MenuOperacional;
 import br.edu.aeroporto.config.Configuracao;
 import br.edu.aeroporto.dominio.PrimeiroAcesso;
 import br.edu.aeroporto.dominio.Sessao;
@@ -19,6 +20,21 @@ import br.edu.aeroporto.servico.ConsultaServico;
 import br.edu.aeroporto.servico.InicializacaoServico;
 import br.edu.aeroporto.servico.PassageiroServico;
 import br.edu.aeroporto.servico.RelatorioServico;
+import br.edu.aeroporto.servico.CadastroServico;
+import br.edu.aeroporto.servico.AdministracaoServico;
+import br.edu.aeroporto.servico.PlanejamentoServico;
+import br.edu.aeroporto.servico.ReservaServico;
+import br.edu.aeroporto.servico.FinanceiroServico;
+import br.edu.aeroporto.servico.AtendimentoServico;
+import br.edu.aeroporto.servico.OperacaoServico;
+import br.edu.aeroporto.servico.VooServico;
+import br.edu.aeroporto.servico.RelatoriosCompletosServico;
+import br.edu.aeroporto.servico.ArquivosServico;
+import br.edu.aeroporto.servico.DadosFicticiosServico;
+import br.edu.aeroporto.infraestrutura.jdbc.CadastroJdbc;
+import br.edu.aeroporto.infraestrutura.jdbc.PlanejamentoJdbc;
+import br.edu.aeroporto.infraestrutura.jdbc.ReservaJdbc;
+import br.edu.aeroporto.infraestrutura.jdbc.Sql;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -44,11 +60,13 @@ public final class Main {
                     .\\executar.ps1              Abre o login e os menus.
                     Configuração: config/application.properties (copie o .example e preencha).
                     O banco deve ter a estrutura criada por sql/criar_banco.sql.
-                    A base inclui passageiros, consultas e relatórios. Fluxos comerciais são a próxima etapa.
+                    .\\executar.ps1 -Migrar       Aplica a migracao aditiva sem recriar tabelas.
+                    .\\executar.ps1 -Diagnostico  Confere conexao, schema e existencia de usuarios.
+                    Cadastros, voos, reservas, pagamentos simulados, check-in, bagagens, embarque e operacao.
                     """);
             return;
         }
-        if (args.length > 1 || args.length == 1 && !args[0].equals("--inicializar")) {
+        if (args.length > 1 || args.length == 1 && !java.util.Set.of("--inicializar","--migrar","--diagnostico").contains(args[0])) {
             System.err.println("Argumento desconhecido. Use --ajuda.");
             System.exit(1);
         }
@@ -59,7 +77,27 @@ public final class Main {
             AuditoriaJdbc auditoria = new AuditoriaJdbc();
             AutorizacaoJdbc autorizacao = new AutorizacaoJdbc();
             Clock relogio = Clock.system(configuracao.fuso());
+            if(args.length==1 && args[0].equals("--migrar")) {
+                String migracao=Files.readString(Path.of("sql/migracoes/001_cadastros_ativos.sql"));
+                banco.transacao(c->{
+                    long pessoas=Sql.unico(c,"SELECT COUNT(*) FROM pessoa",r->r.getLong(1)).orElse(0L);
+                    long reservasExistentes=Sql.unico(c,"SELECT COUNT(*) FROM reserva",r->r.getLong(1)).orElse(0L);
+                    try(var comando=c.createStatement()) { comando.execute(migracao); }
+                    System.out.println("Migracao aditiva aplicada. Pessoas preservadas: "+pessoas+"; reservas: "+reservasExistentes);
+                    return null;
+                });return;
+            }
+            if(args.length==1 && args[0].equals("--diagnostico")) {
+                banco.consultar(c->{
+                    System.out.println("Conexao PostgreSQL estabelecida.");
+                    System.out.println("Tabelas: "+Sql.unico(c,"SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='aeroporto' AND table_type='BASE TABLE'",r->r.getLong(1)).orElse(0L));
+                    System.out.println("Usuarios existentes: "+Sql.unico(c,"SELECT COUNT(*) FROM usuario_sistema",r->r.getLong(1)).orElse(0L));
+                    System.out.println("Migracao aplicada: "+Sql.unico(c,"SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='aeroporto' AND table_name='passageiro' AND column_name='ativo')",r->r.getBoolean(1)).orElse(false));return null;
+                });return;
+            }
             var autenticacao = new AutenticacaoServico(banco, new UsuarioJdbc(), auditoria);
+            boolean migracaoAplicada=banco.consultar(c->Sql.unico(c,"SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema='aeroporto' AND table_name='passageiro' AND column_name='ativo')",r->r.getBoolean(1)).orElse(false));
+            if(!migracaoAplicada) throw new RegraNegocioException("Aplique a migracao aditiva com .\\executar.ps1 -Migrar antes de entrar.");
             if (args.length == 1) {
                 if (autenticacao.existeUsuario()) throw new RegraNegocioException("O primeiro acesso já existe. Execute sem -Inicializar.");
                 inicializar(terminal, new InicializacaoServico(banco, new InicializacaoJdbc(), auditoria, relogio));
@@ -74,7 +112,18 @@ public final class Main {
             System.out.println("Operador: " + sessao.funcionario().nome());
             var passageiros = new PassageiroServico(banco, new PassageiroJdbc(), auditoria, autorizacao, relogio);
             var consultas = new ConsultaServico(banco, new ConsultasJdbc(), autorizacao);
-            new MenuPrincipal(terminal, sessao, passageiros, consultas, new RelatorioServico(), configuracao.fuso()).executar();
+            var reservas=new ReservaServico(banco,new ReservaJdbc(),autorizacao,auditoria,relogio);
+            reservas.expirarPendencias();
+            var operacional=new MenuOperacional(terminal,sessao,passageiros,
+                    new CadastroServico(banco,new CadastroJdbc(),autorizacao,auditoria,relogio),
+                    new AdministracaoServico(banco,autorizacao,auditoria),
+                    new PlanejamentoServico(banco,new PlanejamentoJdbc(),autorizacao,auditoria,relogio),reservas,
+                    new FinanceiroServico(banco,autorizacao,auditoria,relogio),
+                    new AtendimentoServico(banco,autorizacao,auditoria,relogio),
+                    new OperacaoServico(banco,autorizacao,auditoria,relogio),new VooServico(banco,autorizacao,auditoria,relogio),
+                    new RelatoriosCompletosServico(banco,autorizacao,auditoria),new ArquivosServico(banco,autorizacao,auditoria,relogio),
+                    new DadosFicticiosServico(banco,autorizacao,auditoria,relogio));
+            new MenuPrincipal(terminal, sessao, passageiros, consultas, new RelatorioServico(), configuracao.fuso(),operacional).executar();
         } catch (Terminal.FimDaEntrada fim) {
             System.out.println("Entrada encerrada.");
         } catch (RegraNegocioException | IllegalArgumentException | DateTimeException erro) {

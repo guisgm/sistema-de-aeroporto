@@ -12,6 +12,8 @@ import br.edu.aeroporto.repositorio.PassageiroRepositorio;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
+import br.edu.aeroporto.infraestrutura.jdbc.Sql;
+import br.edu.aeroporto.dominio.Dados;
 
 public final class PassageiroServico {
     private final BancoDados banco;
@@ -35,6 +37,33 @@ public final class PassageiroServico {
             autorizacao.exigirAtendimento(conexao, sessao);
             Passageiro passageiro = repositorio.cadastrar(conexao, cadastro);
             auditoria.registrar(conexao, sessao.usuarioId(), "CADASTRAR_PASSAGEIRO", "passageiro", passageiro.id());
+            return passageiro;
+        });
+    }
+
+    public Passageiro vincular(Sessao sessao,long pessoaId,String assistencia) {
+        Dados.exigir(pessoaId>0,"Id invalido.");
+        String observacao=assistencia==null || assistencia.isBlank()?null:Validacao.texto(assistencia,"Assistencia",2000);
+        return banco.transacao(c -> {
+            autorizacao.exigirAtendimento(c,sessao);
+            Passageiro passageiro=repositorio.vincular(c,pessoaId,observacao);
+            auditoria.registrar(c,sessao.usuarioId(),"VINCULAR_PASSAGEIRO","pessoa",pessoaId);
+            return passageiro;
+        });
+    }
+
+    public Passageiro editar(Sessao sessao,long id,String nome,LocalDate nascimento,Long nacionalidade,String assistencia,boolean ativo) {
+        String nomeValidado=Validacao.texto(nome,"Nome",160);
+        Validacao.nascimento(nascimento,LocalDate.now(relogio));
+        String observacao=assistencia==null || assistencia.isBlank()?null:Validacao.texto(assistencia,"Assistencia",2000);
+        return banco.transacao(c -> {
+            autorizacao.exigirAtendimento(c,sessao);
+            Sql.registro(c,"SELECT id FROM pessoa WHERE id=? FOR UPDATE",id);
+            if(!ativo) {
+                Dados.exigir(Sql.listar(c,"SELECT id FROM item_reserva WHERE passageiro_id=? AND situacao IN ('PENDENTE','CONFIRMADO')",r->r.getLong(1),id).isEmpty(),"Passageiro tem passagens ativas.");
+            }
+            Passageiro passageiro=repositorio.editar(c,id,nomeValidado,nascimento,nacionalidade,observacao,ativo);
+            auditoria.registrar(c,sessao.usuarioId(),ativo?"EDITAR_PASSAGEIRO":"INATIVAR_PASSAGEIRO","passageiro",id);
             return passageiro;
         });
     }

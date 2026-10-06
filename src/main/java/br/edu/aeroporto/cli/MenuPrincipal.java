@@ -29,15 +29,17 @@ public final class MenuPrincipal {
     private final ConsultaServico consultas;
     private final RelatorioServico relatorios;
     private final ZoneId fuso;
+    private final MenuOperacional operacional;
 
     public MenuPrincipal(Terminal terminal, Sessao sessao, PassageiroServico passageiros,
-                         ConsultaServico consultas, RelatorioServico relatorios, ZoneId fuso) {
+                         ConsultaServico consultas, RelatorioServico relatorios, ZoneId fuso, MenuOperacional operacional) {
         this.terminal = terminal;
         this.sessao = sessao;
         this.passageiros = passageiros;
         this.consultas = consultas;
         this.relatorios = relatorios;
         this.fuso = fuso;
+        this.operacional=operacional;
     }
 
     public void executar() {
@@ -53,10 +55,22 @@ public final class MenuPrincipal {
                     5 — Consultar mapa de assentos
                     6 — Consultar reserva por localizador
                     7 — Exportar página de voos (TXT/CSV)
+                    8 — Editar passageiros e vincular papeis
+                    9 — Cadastros administrativos
+                    10 — Usuarios, acesso e senha
+                    11 — Planejamento e situacao de voos
+                    12 — Reservas, conexoes e remarcacao
+                    13 — Pagamentos e reembolsos simulados
+                    14 — Check-in, bagagens e embarque
+                    15 — Equipe, recursos e operacao
+                    16 — Paineis e relatorios completos
+                    17 — Importacao e copia de arquivos
+                    18 — Dados FICTICIOS de demonstracao
                     0 — Sair
                     """);
             try {
-                switch (terminal.inteiro("Opção", 0, 7)) {
+                int opcaoAtual=terminal.inteiro("Opção",0,18);
+                switch (opcaoAtual) {
                     case 0 -> continuar = false;
                     case 1 -> cadastrarPassageiro();
                     case 2 -> buscarPassageiros();
@@ -65,17 +79,19 @@ public final class MenuPrincipal {
                     case 5 -> mostrarAssentos();
                     case 6 -> mostrarReserva();
                     case 7 -> exportarVoos();
-                    default -> throw new IllegalStateException("Opção fora do menu.");
+                    default -> operacional.executar(opcaoAtual);
                 }
             } catch (RegraNegocioException erro) {
                 System.out.println(erro.getMessage());
+            } catch (IllegalArgumentException | java.time.DateTimeException erro) {
+                System.out.println("Formato de entrada invalido. Confira o campo informado.");
             } catch (PersistenciaException erro) {
                 System.out.println(erro.getMessage());
                 if (erro.getCause() instanceof SQLException sql) {
                     LOG.log(Level.WARNING, "Falha JDBC no menu. SQLSTATE={0}", sql.getSQLState());
                 }
             } catch (IOException erro) {
-                System.out.println("Não foi possível gravar o relatório. Confira a pasta e as permissões.");
+                System.out.println("Não foi possível acessar o arquivo. Confira a pasta e as permissões.");
                 LOG.log(Level.WARNING, "Falha de exportação: {0}", erro.getClass().getSimpleName());
             }
         } while (continuar);

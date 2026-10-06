@@ -22,6 +22,17 @@ public final class BancoDados {
         return executar(operacao, false);
     }
 
+    public <T> T transacaoRepetivel(OperacaoSql<T> operacao) {
+        for (int tentativa = 0; ; tentativa++) {
+            try {
+                return transacao(operacao);
+            } catch (PersistenciaException erro) {
+                String estado = ((SQLException) erro.getCause()).getSQLState();
+                if (tentativa >= 2 || !("40P01".equals(estado) || "40001".equals(estado))) throw erro;
+            }
+        }
+    }
+
     private <T> T executar(OperacaoSql<T> operacao, boolean somenteLeitura) {
         try (Connection conexao = abrir()) {
             conexao.setReadOnly(somenteLeitura);
@@ -51,6 +62,7 @@ public final class BancoDados {
         propriedades.setProperty("currentSchema", "aeroporto,public");
         propriedades.setProperty("ApplicationName", "sistema-aeroporto");
         propriedades.setProperty("connectTimeout", "10");
+        propriedades.setProperty("socketTimeout", "60");
         propriedades.setProperty("options", "-c timezone=" + configuracao.fuso().getId());
         return DriverManager.getConnection(configuracao.url(), propriedades);
     }

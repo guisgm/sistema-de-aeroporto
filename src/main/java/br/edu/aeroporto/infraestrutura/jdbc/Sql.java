@@ -9,10 +9,27 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Collections;
 
 /** Centraliza recursos JDBC; as consultas e regras continuam nos seus módulos. */
 public final class Sql {
     private Sql() {}
+
+    public static Map<String, Object> linha(ResultSet resultado) throws SQLException {
+        var valores = new LinkedHashMap<String, Object>();
+        var metadados = resultado.getMetaData();
+        for (int coluna = 1; coluna <= metadados.getColumnCount(); coluna++) {
+            valores.put(metadados.getColumnLabel(coluna), resultado.getObject(coluna));
+        }
+        return Collections.unmodifiableMap(valores);
+    }
+
+    public static Map<String, Object> registro(Connection conexao, String consulta, Object... parametros) throws SQLException {
+        return unico(conexao, consulta, Sql::linha, parametros)
+                .orElseThrow(() -> new br.edu.aeroporto.excecao.RegraNegocioException("Registro nao encontrado."));
+    }
 
     @FunctionalInterface
     public interface Mapeador<T> {
@@ -59,7 +76,7 @@ public final class Sql {
             for (int i = 0; i < parametros.length; i++) {
                 Object valor = parametros[i];
                 if (valor instanceof Enum<?> estado) valor = estado.name();
-                if (valor instanceof Instant instante) valor = instante.atOffset(ZoneOffset.UTC);
+                if (valor instanceof Instant instante) valor = instante.truncatedTo(java.time.temporal.ChronoUnit.MICROS).atOffset(ZoneOffset.UTC);
                 comando.setObject(i + 1, valor);
             }
             return comando;
