@@ -5,7 +5,7 @@ Legenda:
 ◐ = Parcial ou implementado, mas ainda com validação pendente.
 □ = Pendente por falta de informação, acesso ou recurso.
 
-Situação: 72 itens verificados, 13 parciais e 3 pendentes externos.
+Situação: 81 itens verificados, 4 parciais e 3 pendentes externos.
 Os resultados PostgreSQL foram obtidos em banco isolado de teste, não no banco real do usuário.
 
 Configuração e validação da base
@@ -19,12 +19,12 @@ Cadastros e administração
 - ✓ Permitir que uma pessoa existente tenha os papéis de passageiro e funcionário.
 - ✓ Implementar cadastro, edição e inativação de funcionários e cargos.
 - ✓ Implementar administração de usuários, perfis, alteração de senha e bloqueio de acesso.
-- ◐ Implementar cadastros de países, cidades, aeroportos e terminais. (Implementado; falta verificação específica do cadastro/edição de países pelo menu.)
+- ✓ Implementar cadastros de países, cidades, aeroportos e terminais. (Validado no PostgreSQL isolado; evidências em docs/07_verificacao_lista.md.)
 - ✓ Implementar cadastros de portões, pistas, posições, esteiras e balcões.
 - ✓ Implementar cadastros de companhias aéreas e modelos de aeronave.
-- ◐ Implementar cadastro, edição e inativação de aeronaves. (Implementado; testes complementares de edição/inativação ainda não executados.)
+- ✓ Implementar cadastro, edição e inativação de aeronaves. (Validado no PostgreSQL isolado; evidências em docs/07_verificacao_lista.md.)
 - ✓ Implementar configuração dos assentos físicos das aeronaves.
-- ◐ Implementar cadastro e manutenção das rotas. (Implementado; falta teste específico de edição/inativação das rotas.)
+- ✓ Implementar cadastro e manutenção das rotas. (Validado no PostgreSQL isolado; evidências em docs/07_verificacao_lista.md.)
 Planejamento de voos
 - ✓ Implementar cadastro de ocorrências de voo.
 - ✓ Definir horários previstos e janelas de check-in e embarque.
@@ -37,7 +37,7 @@ Planejamento de voos
 - ✓ Implementar reprogramação, cancelamento e troca de aeronave dentro dos limites documentados.
 - ✓ Atualizar todas as agendas quando houver mudanças no voo.
 Reservas e passagens
-- ◐ Implementar reservas individuais, de grupos e com conexões. (Reservas e conexões testadas nos serviços; falta executar o teste completo do rascunho pelo terminal.)
+- ✓ Implementar reservas individuais, de grupos e com conexões. (Validado no PostgreSQL isolado; evidências em docs/07_verificacao_lista.md.)
 - ✓ Vincular comprador, passageiros e trechos corretamente.
 - ✓ Copiar preços e condições da tarifa para os itens vendidos.
 - ✓ Implementar escolha ou atribuição automática de assento.
@@ -48,7 +48,7 @@ Reservas e passagens
 - ✓ Recalcular a situação da reserva após alterações nos itens.
 - ✓ Implementar remarcação preservando itens e bilhetes anteriores.
 Pagamentos e reembolsos
-- ◐ Implementar pagamentos simulados e suas situações. (Aprovados/recusados testados; falta executar testes de pendente, aprovação posterior e cancelamento.)
+- ✓ Implementar pagamentos simulados e suas situações. (Validado no PostgreSQL isolado; evidências em docs/07_verificacao_lista.md.)
 - ✓ Validar cobertura financeira antes de confirmar a reserva.
 - ✓ Emitir bilhetes após a confirmação.
 - ✓ Impedir duplicação de operações com chaves de idempotência.
@@ -61,7 +61,7 @@ Check-in, bagagens e embarque
 - ✓ Gerar o cartão de embarque.
 - ✓ Implementar cancelamento e realização novamente do check-in.
 - ✓ Implementar despacho, pesagem e etiquetagem de bagagens.
-- ◐ Definir limites de peças, franquia e cobrança de excesso. (Franquia e excesso por peso testados; faltam testes complementares de peças e limite de peso.)
+- ✓ Definir limites de peças, franquia e cobrança de excesso. (Validado no PostgreSQL isolado; evidências em docs/07_verificacao_lista.md.)
 - ✓ Implementar situações e histórico de rastreio das bagagens.
 - ✓ Tratar retirada, extravio e despacho em conexões.
 - ✓ Implementar embarque com validação de cartão, portão e horário.
@@ -70,9 +70,9 @@ Check-in, bagagens e embarque
 Equipe e operação aeroportuária
 - ✓ Implementar habilitações de tripulantes e validade das licenças.
 - ✓ Implementar escalas e atribuição de funções.
-- ◐ Definir a quantidade mínima de tripulantes. (Equipe válida testada; falta executar a rejeição por equipe insuficiente.)
-- ◐ Validar descanso, deslocamento e conflitos de jornada. (Escalas e conflitos testados; faltam testes direcionados de descanso e deslocamento.)
-- ◐ Validar continuidade dos deslocamentos das aeronaves. (Planejamento testado; faltam testes direcionados de continuidade e intervalo mínimo.)
+- ✓ Definir a quantidade mínima de tripulantes. (Validado no PostgreSQL isolado; evidências em docs/07_verificacao_lista.md.)
+- ✓ Validar descanso, deslocamento e conflitos de jornada. (Validado no PostgreSQL isolado; evidências em docs/07_verificacao_lista.md.)
+- ✓ Validar continuidade dos deslocamentos das aeronaves. (Validado no PostgreSQL isolado; evidências em docs/07_verificacao_lista.md.)
 - ✓ Validar disponibilidade, localização e compatibilidade dos recursos.
 - ✓ Implementar interdições de recursos.
 - ✓ Implementar manutenção preventiva, corretiva e inspeções.
@@ -109,9 +109,14 @@ Verificação e entrega da disciplina
 
 OBSERVAÇÕES
 
-- A última rodada executada aprovou 12 verificações unitárias Java e 103 verificações PostgreSQL.
-- Também passaram 22 testes web, 4 testes de navegador, build e verificação de formatação.
-- Testes complementares foram escritos, mas a nova execução foi impedida pelo limite da ferramenta de aprovação. Eles não estão contados como aprovados.
-- A apresentação preparada é oral, com roteiro em Markdown; não foi criado PPTX.
-- A lista não representa uma entrega 100% concluída nem conformidade oficial já comprovada.
-- Evidências e limitações detalhadas: docs/07_verificacao_lista.md.
+- Rodada de 07/10/2026: 12 verificações unitárias Java, 129 verificações Java/PostgreSQL,
+  27 testes web/PostgreSQL e 4 testes de navegador aprovados; build e formatação aprovados.
+- SQLite removido. Java usa schema aeroporto e web usa aerohub no PostgreSQL; cadastros independentes.
+- Nove itens parciais tiveram suas verificações complementares concluídas.
+- Restam quatro parciais ligados ao banco real e aos critérios oficiais, além de três pendências externas.
+- A apresentação preparada é oral, com roteiro em Markdown; formato oficial ainda não informado.
+- Evidências e limitações: docs/07_verificacao_lista.md.
+
+✓ 81 implementados e validados no ambiente indicado
+◐ 4 com validação externa pendente
+□ 3 dependentes de informação ou recurso

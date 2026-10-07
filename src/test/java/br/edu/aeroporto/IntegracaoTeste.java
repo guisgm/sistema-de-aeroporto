@@ -43,7 +43,7 @@ public final class IntegracaoTeste {
     private static int numeroVoo;
 
     public static void main(String[] args) throws Exception {
-        inicializar();cadastros();comercial();atendimento();arquivos();concorrencia();cancelamentos();cenariosAdicionais();regrasComplementares();administracaoEImportacao();
+        inicializar();cadastros();comercial();atendimento();arquivos();concorrencia();cancelamentos();cenariosAdicionais();regrasComplementares();administracaoEImportacao();cadastrosRestantes();
         System.out.println(verificacoes+" verificacoes PostgreSQL aprovadas; banco isolado preservado.");
     }
 
@@ -270,8 +270,8 @@ public final class IntegracaoTeste {
         verificar(!relatorios.painel(admin,origem,inicio.atZone(ZoneOffset.UTC).toLocalDate(),true).isEmpty(),"Painel de partidas por aeroporto");
         verificar(!relatorios.painel(admin,destino,fim.atZone(ZoneOffset.UTC).toLocalDate(),false).isEmpty(),"Painel de chegadas por aeroporto");
         bagagensEmConexao(reserva,primeiro,segundo,inicioVolta,base);
-        var demo=new DadosFicticiosServico(banco,autorizacao,auditoria,relogio);var dados=demo.criar(admin,sufixo);
-        verificar(dados.equals(demo.criar(admin,sufixo)),"Demonstracao nao duplica dados");
+        var demo=new DadosFicticiosServico(banco,autorizacao,auditoria,relogio);var dados=demo.criar(admin,"D"+sufixo.substring(0,7));
+        verificar(dados.equals(demo.criar(admin,"D"+sufixo.substring(0,7))),"Demonstracao nao duplica dados");
         long demoVoo=Dados.id(dados,"voo"),demoPax=Dados.id(dados,"passageiro"),demoTarifa=Dados.id(dados,"tarifa");
         long demoReserva=reservas.reservar(admin,demoPax,List.of(new PedidoTrecho(demoPax,demoVoo,demoTarifa,1,null,BigDecimal.ZERO)),15);
         for(int i=0;i<25;i++) financeiro.pagar(admin,demoReserva,"recusa-"+sufixo+"-"+i,"CARTAO",new BigDecimal("120"),"RECUSADO");
@@ -307,7 +307,7 @@ public final class IntegracaoTeste {
     }
 
     private static void cancelamentoAposEmbarque() {
-        var dados=new DadosFicticiosServico(banco,autorizacao,auditoria,relogio).criar(admin,"C"+sufixo.substring(1));
+        var dados=new DadosFicticiosServico(banco,autorizacao,auditoria,relogio).criar(admin,"C"+sufixo.substring(0,7));
         long flight=Dados.id(dados,"voo"),pax=Dados.id(dados,"passageiro");
         long reserva=reservas.reservar(admin,pax,List.of(new PedidoTrecho(pax,flight,Dados.id(dados,"tarifa"),1,null,BigDecimal.ZERO)),15);
         financeiro.pagar(admin,reserva,"emb-cancel-"+sufixo,"PIX",new BigDecimal("120"),"APROVADO");
@@ -455,6 +455,41 @@ public final class IntegracaoTeste {
         long antesDaMigracao=contar("SELECT COUNT(*) FROM pessoa");
         banco.transacao(c->{try(var st=c.createStatement()){st.execute(Files.readString(Path.of("sql/migracoes/001_cadastros_ativos.sql")));}catch(java.io.IOException e){throw new RuntimeException(e);}return null;});
         verificar(contar("SELECT COUNT(*) FROM pessoa")==antesDaMigracao,"Migracao repetida preserva dados existentes");
+    }
+
+    private static void cadastrosRestantes() throws Exception {
+        String codigo="QZ",nome="Pais MENU FICTICIO "+sufixo;
+        String criacao=executarTerminal("9\n1\n2\n"+codigo+"\n"+nome+"\n0\n");
+        long id=numero("SELECT id FROM pais WHERE codigo='QZ'");
+        verificar(id>0 && criacao.contains("Cadastro salvo:"),"Pais cadastrado pelo menu real do terminal");
+        String edicao=executarTerminal("9\n1\n3\n"+id+"\n"+codigo+"\n"+nome+" EDITADO\n9\n1\n1\n1\n0\n");
+        verificar(texto("SELECT nome FROM pais WHERE id="+id).equals(nome+" EDITADO") && edicao.contains(nome+" EDITADO"),"Pais editado e consultado pelo menu real do terminal");
+        var valores=new LinkedHashMap<>(banco.consultar(c->Sql.registro(c,"SELECT origem_id,destino_id,distancia_km,ativa FROM rota WHERE id=?",rota)));
+        valores.put("distancia_km",new BigDecimal("1234"));cadastros.salvar(admin,TipoCadastro.ROTA,rota,valores);
+        verificar(numero("SELECT distancia_km FROM rota WHERE id="+rota)==1234,"Rota editada preserva identidade");
+        valores.put("ativa",false);rejeitar(()->cadastros.salvar(admin,TipoCadastro.ROTA,rota,valores),"Rota com voos ativos nao pode ser inativada");
+        long cidade=numero("SELECT cidade_id FROM aeroporto WHERE id="+origem);
+        long novoDestino=cad(TipoCadastro.AEROPORTO,"cidade_id",cidade,"codigo_icao",icao(),"nome","Destino ROTA FICTICIO "+sufixo,"fuso_horario","America/Sao_Paulo");
+        long novaRota=cad(TipoCadastro.ROTA,"origem_id",origem,"destino_id",novoDestino,"distancia_km","1000");
+        long livre=novoAviao("RF",2);Instant inicio=relogio.instant().plus(Duration.ofDays(2));var p=programacao(livre,inicio,inicio.plus(Duration.ofHours(2)));
+        var nova=new ProgramacaoVoo(companhia,novaRota,livre,p.numero(),p.partida(),p.chegada(),p.checkinAbre(),p.checkinFecha(),p.embarqueAbre(),p.embarqueFecha());
+        long historico=planejamento.programar(admin,nova);voos.transicao(admin,historico,SituacaoVoo.CANCELADO,"Teste de inativacao de rota");
+        var novos=mapa("origem_id",origem,"destino_id",novoDestino,"distancia_km",new BigDecimal("1000"),"ativa",false);cadastros.salvar(admin,TipoCadastro.ROTA,novaRota,novos);
+        verificar(contar("SELECT COUNT(*) FROM rota WHERE id="+novaRota+" AND NOT ativa")==1 && numero("SELECT rota_id FROM voo WHERE id="+historico)==novaRota,"Rota inativada preserva voos historicos");
+        rejeitar(()->planejamento.programar(admin,nova),"Rota inativa nao admite novos voos");
+    }
+
+    private static String executarTerminal(String comandos) throws Exception {
+        var processo=new ProcessBuilder(Path.of(System.getProperty("java.home"),"bin","java.exe").toString(),"-Dfile.encoding=UTF-8","-cp","target/classes;lib/*","br.edu.aeroporto.Main");
+        processo.environment().put("AEROPORTO_DB_URL","jdbc:postgresql://127.0.0.1:55439/sistema_aeroporto");processo.environment().put("AEROPORTO_DB_USUARIO","aeroporto_teste");processo.environment().put("AEROPORTO_DB_SENHA","FICTICIO-cluster-trust");
+        processo.redirectErrorStream(true);var filho=processo.start();
+        try(var leitor=Executors.newSingleThreadExecutor()) {
+            var leitura=leitor.submit(()->new String(filho.getInputStream().readAllBytes(),java.nio.charset.StandardCharsets.UTF_8));
+            try(var entrada=filho.outputWriter()) { entrada.write("teste_admin\nSenhaFicticia!2026\n"+comandos); }
+            if(!filho.waitFor(30,TimeUnit.SECONDS)) { filho.destroyForcibly();throw new AssertionError("Terminal excedeu 30 segundos"); }
+            if(filho.exitValue()!=0) throw new AssertionError("Terminal encerrou com erro");
+            return leitura.get(5,TimeUnit.SECONDS);
+        }
     }
 
     private static String cpf() {

@@ -1,11 +1,15 @@
-param([string]$Binario = '')
+param([string]$Binario = '', [switch]$Tudo, [switch]$ManterCluster)
 $ErrorActionPreference = 'Stop'
 Push-Location $PSScriptRoot
 $taskClusterStarted = $false
 try {
     . (Join-Path $PSScriptRoot 'scripts/configurar-java.ps1')
     & (Join-Path $PSScriptRoot 'compilar.ps1')
-    if (-not $Binario) { $Binario = Join-Path $PSScriptRoot 'artifacts/pg-tools/extracted/pgsql/bin' }
+    if (-not $Binario) {
+        $taskInstalled = @(Get-ChildItem -LiteralPath 'C:\Program Files\PostgreSQL' -Directory -ErrorAction SilentlyContinue | Where-Object { $_.Name -match '^\d+$' } | Sort-Object { [int]$_.Name } -Descending | ForEach-Object { Join-Path $_.FullName 'bin' } | Where-Object { Test-Path -LiteralPath (Join-Path $_ 'initdb.exe') })
+        if ($taskInstalled.Count) { $Binario = $taskInstalled[0] }
+        else { $Binario = Join-Path $PSScriptRoot 'artifacts/pg-tools/extracted/pgsql/bin' }
+    }
     $taskPgBin = [IO.Path]::GetFullPath($Binario)
     if (-not (Test-Path -LiteralPath (Join-Path $taskPgBin 'initdb.exe'))) {
         throw 'Informe -Binario com a pasta bin dos binarios PostgreSQL. Veja docs/08_operacao_java.md.'
@@ -29,10 +33,28 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Falha ao preparar o schema de teste.' }
     & (Join-Path $PSScriptRoot 'testar-java.ps1') -Integracao
     if ($LASTEXITCODE -ne 0) { throw 'Falha nos testes de integracao.' }
+    if ($Tudo) {
+        $taskPreviousTestUrl = $env:AEROHUB_TEST_DATABASE_URL
+        try {
+            $env:AEROHUB_TEST_DATABASE_URL = 'postgresql://aeroporto_teste@127.0.0.1:55439/sistema_aeroporto'
+            & npm.cmd test
+            if ($LASTEXITCODE -ne 0) { throw 'Falha nos testes da web.' }
+            & npm.cmd run test:e2e
+            if ($LASTEXITCODE -ne 0) { throw 'Falha nos testes de navegador.' }
+            & npm.cmd run format:check
+            if ($LASTEXITCODE -ne 0) { throw 'Falha na formatacao.' }
+        } finally { $env:AEROHUB_TEST_DATABASE_URL = $taskPreviousTestUrl }
+    }
 } finally {
     if ($taskClusterStarted) {
         & (Join-Path $taskPgBin 'pg_ctl.exe') -D $taskPgData -m fast -w stop
         if ($LASTEXITCODE -ne 0) { Write-Warning ('Servidor de teste requer encerramento: ' + $taskPgData) }
+        elseif (-not $ManterCluster) {
+            $taskResolvedCluster = [IO.Path]::GetFullPath($taskPgData)
+            $taskExpectedRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'artifacts')) + [IO.Path]::DirectorySeparatorChar
+            if (-not $taskResolvedCluster.StartsWith($taskExpectedRoot, [StringComparison]::OrdinalIgnoreCase)) { throw 'Cluster fora da pasta artifacts; limpeza recusada.' }
+            Remove-Item -LiteralPath $taskResolvedCluster -Recurse -Force
+        }
     }
     Pop-Location
 }

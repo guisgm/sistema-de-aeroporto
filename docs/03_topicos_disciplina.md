@@ -4,6 +4,8 @@ Fonte: arquivo “Relatorio tópicos PDP” fornecido pelo aluno, análise dos s
 
 O pedido do aluno é uma aplicação de aeroporto em Java pelo terminal. Portanto, os exemplos de produtos e REST do relatório são adaptados ao domínio. As tabelas abaixo preservam o plano original de cobertura; a seção "Cobertura executada" relaciona a implementação atual e não presume que cada API citada no material seja requisito obrigatório.
 
+Na simplificação de 07/10/2026, a escrita do código foi adaptada às aulas: `var`, `record`, pipelines de Stream, pattern matching de `instanceof` e regras de `switch` com seta foram substituídos. Consultas repetidas agora usam métodos comuns em `Sql`. PostgreSQL, autorização e transações permanecem. Detalhes, exemplos e resultados: [11_simplificacao_java.md](11_simplificacao_java.md).
+
 ## Orientação a objetos e arquitetura
 
 | Conteúdo | Aplicação concreta planejada |
@@ -106,7 +108,7 @@ JPA, Servlet, Web Services, REST e GUI aparecem como conteúdos ou sugestões no
 - [x] Diagramas e dicionário de dados.
 - [x] Regras e limites de cada operação.
 - [x] Plano para aplicar os tópicos no Java.
-- [x] Execução do script em PostgreSQL 17.11 isolado e verificação das restrições; banco real do usuário pendente.
+- [x] Execução do script em PostgreSQL 18.4 isolado e verificação das restrições; banco real do usuário pendente.
 - [x] Base Java com menus, repositórios e serviços; escopo atual documentado em `05_base_java.md`.
 - [x] Implementação dos demais cadastros e fluxos comerciais/operacionais Java, com testes integrados.
 - [ ] Demonstração prática dos tópicos obrigatórios conforme a avaliação do professor.
@@ -119,8 +121,8 @@ JPA, Servlet, Web Services, REST e GUI aparecem como conteúdos ou sugestões no
 | Interfaces, overriding e sobrecarga | Repositórios e exportadores originais; PassageiroServico.buscar por id/nome; criação de cenário com identificador opcional | Compilação e consultas/arquivos no PostgreSQL |
 | Scanner, conversões, switch e loops | Terminal, MenuPrincipal e MenuOperacional; reserva montada antes de gravar | Login e navegação por entrada real do terminal |
 | Vetores e matriz irregular | MapaAssentos: int[], String[], String[][]; posições inexistentes permanecem vazias | UnidadeTeste verifica dimensões, estados e isolamento de cópias; mapa real no terminal |
-| Arrays.sort/binarySearch/fill/copyOf/setAll/equals/deepEquals | Ordenação e localização de fila/coluna, preenchimento de espaços e proteção do mapa; limpeza de senhas preservada | UnidadeTeste e consulta integrada de assentos |
-| ArrayList e generics | Rascunho com add/get/set/remove/contains/indexOf/size/isEmpty/clear/subList; combinação de ids com addAll | Compilação e reserva integrada; testarRascunho foi acrescentado, mas sua última execução ficou bloqueada pela ferramenta de aprovação |
+| Arrays.binarySearch/fill/copyOf/equals/deepEquals e Collections.sort | Laços montam os vetores de fila/coluna e copiam as linhas da matriz; listas ordenadas, preenchimento de espaços e proteção do mapa; limpeza de senhas preservada | UnidadeTeste e consulta integrada de assentos |
+| ArrayList e generics | Rascunho com add/get/set/remove/contains/indexOf/size/isEmpty/clear/subList; combinação de ids com addAll | testarRascunho aprovado: adicionar/listar/editar/remover/limpar/gravar pelo terminal, com conferência no PostgreSQL |
 | Collections.sort/min/max | Resumo de atrasos calcula menor, maior e mediana sem alterar dados persistidos | IntegracaoTeste verifica atraso real e relatórios |
 | Collections.shuffle | Distribuição determinística de inserção dos assentos na massa FICTICIA | Criação e repetição idempotente da massa no PostgreSQL |
 | Collections.reverse e Arrays.toString | Ordem inversa opcional de consultas e cabeçalho de colunas do mapa no terminal | Compilação e execução do mapa; opção de inversão ainda sem teste individual |

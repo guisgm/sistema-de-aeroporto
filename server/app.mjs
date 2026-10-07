@@ -40,7 +40,7 @@ export function createApp(db) {
     path: '/',
     maxAge: 8 * 3600000,
   };
-  app.post('/api/login', (req, res) => {
+  app.post('/api/login', async (req, res) => {
     const ip = req.ip,
       now = Date.now(),
       attempt = attempts.get(ip);
@@ -52,7 +52,7 @@ export function createApp(db) {
       password = String(req.body?.password || '');
     if (password.length > 128 || email.length > 200)
       return res.status(400).json({ message: 'Credenciais invalidas.' });
-    const user = db.prepare('SELECT * FROM users WHERE email=?').get(email);
+    const user = await db.one('SELECT * FROM users WHERE email=?', [email]);
     const hash = (user?.password || '00000000000000000000000000000000:' + '00'.repeat(64)).split(
       ':',
     );
@@ -70,7 +70,7 @@ export function createApp(db) {
       csrf = randomBytes(24).toString('hex');
     const safe = { id: user.id, name: user.name, email: user.email, role: user.role };
     sessions.set(token, { user: safe, csrf, expires: now + 8 * 3600000 });
-    audit(db, safe, 'Acesso', 'users', safe.id, 'Sessao iniciada.');
+    await audit(db, safe, 'Acesso', 'users', safe.id, 'Sessao iniciada.');
     res.cookie(cookieName, token, sessionOptions).json({ user: safe, csrf });
   });
   app.use('/api', (req, res, next) => {
@@ -90,36 +90,36 @@ export function createApp(db) {
       return res.status(403).json({ message: 'Requisicao invalida. Atualize a pagina.' });
     next();
   });
-  app.get('/api/session', (req, res) => res.json({ user: req.user, csrf: req.session.csrf }));
-  app.post('/api/logout', (req, res) => {
+  app.get('/api/session', async (req, res) => res.json({ user: req.user, csrf: req.session.csrf }));
+  app.post('/api/logout', async (req, res) => {
     sessions.delete(req.token);
     res.clearCookie(cookieName, sessionOptions);
     res.json({ ok: true });
   });
-  app.get('/api/state', (req, res) => res.json(readState(db, req.user)));
-  app.post('/api/reservations', (req, res) =>
-    res.status(201).json(createReservation(db, req.user, req.body)),
+  app.get('/api/state', async (req, res) => res.json(await readState(db, req.user)));
+  app.post('/api/reservations', async (req, res) =>
+    res.status(201).json(await createReservation(db, req.user, req.body)),
   );
-  app.post('/api/reservations/:id/checkin', (req, res) =>
-    res.json(updateReservation(db, req.user, req.params.id, 'checkin', req.body.version)),
+  app.post('/api/reservations/:id/checkin', async (req, res) =>
+    res.json(await updateReservation(db, req.user, req.params.id, 'checkin', req.body.version)),
   );
-  app.post('/api/reservations/:id/cancel', (req, res) =>
-    res.json(updateReservation(db, req.user, req.params.id, 'cancel', req.body.version)),
+  app.post('/api/reservations/:id/cancel', async (req, res) =>
+    res.json(await updateReservation(db, req.user, req.params.id, 'cancel', req.body.version)),
   );
-  app.get('/api/export/:table', (req, res) => {
+  app.get('/api/export/:table', async (req, res) => {
     res.set({
       'Content-Type': 'text/csv; charset=utf-8',
       'Content-Disposition': `attachment; filename="aerohub-${req.params.table}.csv"`,
     });
-    res.send(csvExport(db, req.user, req.params.table, req.query.date));
+    res.send(await csvExport(db, req.user, req.params.table, req.query.date));
   });
-  app.post('/api/:table', (req, res) =>
-    res.status(201).json(saveEntity(db, req.user, req.params.table, req.body)),
+  app.post('/api/:table', async (req, res) =>
+    res.status(201).json(await saveEntity(db, req.user, req.params.table, req.body)),
   );
-  app.put('/api/:table/:id', (req, res) =>
-    res.json(saveEntity(db, req.user, req.params.table, req.body, req.params.id)),
+  app.put('/api/:table/:id', async (req, res) =>
+    res.json(await saveEntity(db, req.user, req.params.table, req.body, req.params.id)),
   );
-  app.use('/api', (req, res) => res.status(404).json({ message: 'Rota nao encontrada.' }));
+  app.use('/api', async (req, res) => res.status(404).json({ message: 'Rota nao encontrada.' }));
   app.use((error, req, res, next) => {
     if (!req.path.startsWith('/api')) return next(error);
     if (error instanceof ZodError)
@@ -129,13 +129,13 @@ export function createApp(db) {
       });
     if (error instanceof BusinessError)
       return res.status(error.status).json({ message: error.message });
-    if (error.code?.startsWith('SQLITE_CONSTRAINT') || error.message?.includes('UNIQUE constraint'))
+    if (error.code === '23505')
       return res.status(409).json({
         message: 'Ja existe um registro com esses dados. Verifique codigos, documentos e assentos.',
       });
     if (error instanceof SyntaxError && 'body' in error)
       return res.status(400).json({ message: 'Dados enviados em formato invalido.' });
-    console.error('Falha na API:', error);
+    console.error('Falha na API:', error.code || error.name);
     res.status(500).json({ message: 'Nao foi possivel concluir a operacao. Tente novamente.' });
   });
   return app;

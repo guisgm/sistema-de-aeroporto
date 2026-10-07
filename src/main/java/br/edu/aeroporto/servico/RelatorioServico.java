@@ -2,6 +2,7 @@ package br.edu.aeroporto.servico;
 
 import br.edu.aeroporto.dto.VooResumo;
 import br.edu.aeroporto.relatorio.ExportadorVoos;
+
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -17,12 +18,17 @@ public final class RelatorioServico {
         Path temporario = Files.createTempFile(pasta, "voos-", ".tmp");
         Path destino = pasta.resolve("voos-" + UUID.randomUUID() + "." + exportador.extensao());
         try {
-            try (BufferedWriter arquivo = Files.newBufferedWriter(temporario, StandardCharsets.UTF_8)) {
+            try (BufferedWriter arquivo =
+                    Files.newBufferedWriter(temporario, StandardCharsets.UTF_8)) {
                 exportador.escrever(arquivo, voos);
             }
             return Files.move(temporario, destino);
         } catch (IOException | RuntimeException erro) {
-            try { Files.deleteIfExists(temporario); } catch (IOException limpeza) { erro.addSuppressed(limpeza); }
+            try {
+                Files.deleteIfExists(temporario);
+            } catch (IOException limpeza) {
+                erro.addSuppressed(limpeza);
+            }
             throw erro;
         }
     }

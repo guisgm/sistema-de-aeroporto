@@ -2,7 +2,7 @@
 
 ## Escopo implementado
 
-A entrada dos novos fluxos e o terminal Java. O AeroHub React/SQLite existente continua documentado em `06_aplicacao_web.md`. A lista foi implementada sobre as 41 tabelas PostgreSQL existentes, sem criar tabelas equivalentes. O historico automatico de voos, as FKs compostas, as exclusoes de agendas e os indices parciais de ocupacao foram preservados.
+A entrada dos novos fluxos e o terminal Java. O AeroHub React/PostgreSQL usa o schema independente aerohub e está documentado em `06_aplicacao_web.md`. A lista foi implementada sobre as 41 tabelas PostgreSQL existentes, sem criar tabelas equivalentes. O historico automatico de voos, as FKs compostas, as exclusoes de agendas e os indices parciais de ocupacao foram preservados.
 
 `Main` monta os servicos e injeta as dependencias. `MenuPrincipal` conserva as opcoes 1 a 7; `MenuOperacional` conecta as opcoes 8 a 18 aos novos servicos. `CadastroJdbc` usa uma lista fechada de tabelas, campos e tipos em `TipoCadastro`: nomes digitados nunca viram identificadores SQL. Os servicos comerciais compartilham a mesma conexao JDBC para cada transacao.
 
@@ -99,8 +99,10 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\testar-postgres.ps1
 
 `testar-java.ps1` compila e executa os testes unitarios. `testar-postgres.ps1` cria um cluster novo em `artifacts/pg-teste-GUID`, com escuta apenas em 127.0.0.1:55439, instala o schema/migracao, executa os testes e encerra seu proprio servidor no finally. Recusa porta ocupada; nao apaga clusters ou bancos existentes. Fica fora do banco configurado pelo usuario. Autenticacao trust e credenciais ficticias sao exclusivas desse ambiente isolado.
 
-Os binarios de teste baixados da [EDB](https://productsdl.enterprisedb.com/download-postgresql-binaries) ficam em `artifacts/pg-tools/extracted/pgsql/bin`. Em outra instalacao, informe `-Binario 'C:\caminho\pgsql\bin'`. A [pagina PostgreSQL para Windows](https://www.postgresql.org/download/windows/) referencia esses arquivos. O mecanismo de bloqueios e deadlocks segue a [documentacao PostgreSQL](https://www.postgresql.org/docs/17/explicit-locking.html).
+O script detecta os binários instalados em `C:\Program Files\PostgreSQL`, preferindo a maior versão. Também aceita os binários de teste baixados da [EDB](https://productsdl.enterprisedb.com/download-postgresql-binaries) em `artifacts/pg-tools/extracted/pgsql/bin`. Em outra instalacao, informe `-Binario 'C:\caminho\pgsql\bin'`. A [pagina PostgreSQL para Windows](https://www.postgresql.org/download/windows/) referencia esses arquivos. O mecanismo de bloqueios e deadlocks segue a [documentacao PostgreSQL](https://www.postgresql.org/docs/17/explicit-locking.html).
 
 O teste de integracao usa exclusivamente a porta 55439 e o usuario de teste; nao carrega application.properties. Os dados gerados sao FICTICIOS e os arquivos de teste ficam em artifacts e relatorios, fora do Git. Em computador que bloqueie um executavel baixado, o sistema operacional precisa libera-lo; o projeto nao altera essa politica.
 
 Os resultados executados, a cobertura por item e as pendencias estao em `07_verificacao_lista.md`. Credenciais/conexao do banco do usuario, rubrica oficial e execucao em outra maquina continuam distintas dos testes no ambiente isolado.
+
+Para executar também API/regras web, build, navegador e formatação no mesmo cluster: `powershell -NoProfile -ExecutionPolicy Bypass -File .\testar-postgres.ps1 -Tudo`. Instale as dependências npm e o Chrome antes. O cluster é encerrado e removido ao terminar; `-ManterCluster` preserva os arquivos para diagnóstico.

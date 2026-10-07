@@ -3,14 +3,18 @@
 ## Escopo e arquitetura
 
 AeroHub e uma simulacao funcional de operacoes aeroportuarias para a base GRU/SBGR.
-A interface React conversa com uma API Express no mesmo servidor. O SQLite local
-persiste os dados em `data/aerohub.sqlite`, com chaves estrangeiras, indices e
-transacoes. A aplicacao Java/PostgreSQL original permanece independente: esta
-versao web nao consulta nem modifica seu banco PostgreSQL.
+A interface React conversa com uma API Express no mesmo servidor. O PostgreSQL
+persiste os dados no schema `aerohub`, com chaves estrangeiras, índices e transações.
+Java e web usam exclusivamente PostgreSQL, mas seus modelos e cadastros permanecem
+independentes: o Java utiliza o schema `aeroporto` e a web utiliza `aerohub`.
+O schema Java não é alterado pela inicialização web.
 
-Requisitos: Node.js 22.13 ou superior; ambiente verificado com Node.js 24.11.
-O projeto usa a [API SQLite nativa do Node.js](https://nodejs.org/api/sqlite.html).
-No Node.js 24.11, o aviso de recurso experimental do SQLite e esperado.
+Requisitos: Node.js 22.13 ou superior e PostgreSQL; verificados com Node.js 24.18,
+JDK 21 e PostgreSQL 18. O driver é [node-postgres](https://node-postgres.com/).
+As transações reservam um cliente do pool até COMMIT/ROLLBACK e os escritores
+adquirem um bloqueio transacional por schema antes de consultar disponibilidade,
+conforme o uso de [transações do driver](https://node-postgres.com/features/transactions).
+Isso serializa as alterações desta simulação e evita dupla venda/atualização perdida.
 
 ## Executar
 
@@ -18,6 +22,8 @@ No PowerShell, a partir da raiz do projeto:
 
 ```powershell
 npm.cmd install
+# Preencha config/application.properties com a conexao PostgreSQL.
+$env:AEROHUB_DEMO = 'true'
 npm.cmd run dev
 ```
 
@@ -36,7 +42,14 @@ $env:PORT = '5174'
 npm.cmd start
 ```
 
-O primeiro inicio cria 4 companhias, 20 aeronaves, 3 terminais, 12 portoes,
+A conexão usa `DATABASE_URL`, variáveis PostgreSQL (`PGHOST`, `PGPORT`, `PGDATABASE`,
+`PGUSER`, `PGPASSWORD`) ou o mesmo `config/application.properties` usado pelo Java,
+nessa ordem. Não envie senhas para o Git. `AEROHUB_DB_SCHEMA` altera o schema web;
+`aeroporto` e `public` são recusados para evitar mistura com o modelo Java.
+O banco deve existir e o usuário deve ter permissão para criar o schema.
+A estrutura em `sql/web.sql` é aplicada automaticamente e de forma repetível.
+
+Com `AEROHUB_DEMO=true`, o primeiro início cria 4 companhias, 20 aeronaves, 3 terminais, 12 portoes,
 144 voos e 24 passageiros com reservas ficticias. Os voos cobrem os seis dias
 anteriores, o dia da inicializacao e o seguinte. A base nao e recriada nem
 atualizada automaticamente a cada abertura. Depois deste periodo, cadastre voos
@@ -132,16 +145,19 @@ Nao e um sistema homologado para controlar um aeroporto real.
 | tests/ | Testes de regras, API e fluxos de navegador |
 
 ```powershell
-npm.cmd test
-npm.cmd run test:e2e
-npm.cmd run format:check
+powershell -NoProfile -ExecutionPolicy Bypass -File .\testar-postgres.ps1 -Tudo
 ```
 
-Os testes de navegador usam Google Chrome instalado, compilam a interface e executam
-um servidor isolado na porta 5199, com banco separado em `artifacts/`. Capturas ficam
-em `artifacts/` e falhas geram traces em `test-results/`. Nenhum teste escreve na base
-operacional `data/aerohub.sqlite`. `scripts/visual-check.mjs` verifica a instancia em
-5173 nas larguras 1440, 1280, 768, 390 e 320 e registra eventuais transbordamentos.
+Os testes usam um cluster PostgreSQL descartável na porta 55439 e schemas aleatórios
+por teste; verificam a API, as regras, rollback, persistência, concorrência e a data
+local na exportação. O navegador usa Chrome instalado e um servidor na porta 5199.
+Para rodar npm test/test:e2e separadamente, mantenha um PostgreSQL de teste acessível
+e configure `AEROHUB_TEST_DATABASE_URL`; seu padrão é o cluster isolado desse script.
+Os schemas dos testes são removidos ao encerrar, e o script encerra e remove somente
+seu próprio cluster. Capturas ficam em `artifacts/` e traces de falha em `test-results/`.
+`scripts/visual-check.mjs` verifica uma instância em 5173 nas larguras 1440, 1280,
+768, 390 e 320. Não houve migração de dados de um banco anterior encontrado: nenhum
+arquivo de dados web existia neste workspace antes desta etapa.
 
 Fontes DM Sans/Manrope e icones Lucide sao distribuidos localmente. A fotografia
 ilustrativa de aeroporto vem do [Unsplash](https://images.unsplash.com/photo-1580285198593-af9f402c676a)

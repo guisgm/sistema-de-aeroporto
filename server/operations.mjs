@@ -38,8 +38,8 @@ export function authorize(user, capability) {
     403,
   );
 }
-export function audit(db, user, action, entity, entityId, detail) {
-  db.prepare('INSERT INTO audit VALUES (?,?,?,?,?,?,?)').run(
+export async function audit(db, user, action, entity, entityId, detail) {
+  await db.execute('INSERT INTO audit VALUES (?,?,?,?,?,?,?)', [
     randomUUID(),
     new Date().toISOString(),
     user.id,
@@ -47,23 +47,22 @@ export function audit(db, user, action, entity, entityId, detail) {
     entity,
     entityId,
     detail,
-  );
+  ]);
 }
-export function record(db, table, id) {
-  const row = db.prepare(`SELECT * FROM ${table} WHERE id=?`).get(id);
+export async function record(db, table, id) {
+  const row = await db.one(`SELECT * FROM ${table} WHERE id=?`, [id]);
   ensure(row, 'Registro nao encontrado.', 404);
   return row;
 }
 
-export function readState(db, user) {
+export async function readState(db, user) {
   const state = {};
   for (const table of [...tables, 'reservations'])
-    state[table] = db.prepare(`SELECT * FROM ${table}`).all();
-  state.audit = db
-    .prepare(
-      'SELECT a.*, u.name AS userName FROM audit a JOIN users u ON u.id=a.userId ORDER BY a.createdAt DESC LIMIT 300',
-    )
-    .all();
+    state[table] = await db.all(`SELECT * FROM ${table}`, []);
+  state.audit = await db.all(
+    'SELECT a.*, u.name AS userName FROM audit a JOIN users u ON u.id=a.userId ORDER BY a.createdAt DESC LIMIT 300',
+    [],
+  );
   state.today = today();
   state.now = new Date().toISOString();
   if (user?.role === 'operator') {
@@ -78,7 +77,7 @@ export function readState(db, user) {
   return state;
 }
 
-function validateBusiness(db, table, item, existing) {
+async function validateBusiness(db, table, item, existing) {
   if (table === 'passengers') {
     ensure(
       item.documentType === 'cpf'
@@ -94,13 +93,12 @@ function validateBusiness(db, table, item, existing) {
     );
   }
   if (table === 'gates') {
-    record(db, 'terminals', item.terminalId);
+    await record(db, 'terminals', item.terminalId);
     if (existing && (item.status === 'blocked' || existing.terminalId !== item.terminalId)) {
-      const assigned = db
-        .prepare(
-          `SELECT id FROM flights WHERE gateId=? AND ${active} AND COALESCE(actual,scheduled)>=?`,
-        )
-        .get(existing.id, new Date(Date.now() - 30 * 60000).toISOString());
+      const assigned = await db.one(
+        `SELECT id FROM flights WHERE gateId=? AND ${active} AND COALESCE(actual,scheduled)>=?`,
+        [existing.id, new Date(Date.now() - 30 * 60000).toISOString()],
+      );
       ensure(
         !assigned,
         'Realocar os voos ativos antes de bloquear ou mudar o terminal deste portao.',
@@ -108,22 +106,20 @@ function validateBusiness(db, table, item, existing) {
     }
   }
   if (table === 'aircraft') {
-    record(db, 'airlines', item.airlineId);
+    await record(db, 'airlines', item.airlineId);
     if (existing) {
-      const assigned = db
-        .prepare(
-          `SELECT id FROM flights WHERE aircraftId=? AND ${active} AND COALESCE(actual,scheduled)>=?`,
-        )
-        .get(existing.id, new Date(Date.now() - 30 * 60000).toISOString());
+      const assigned = await db.one(
+        `SELECT id FROM flights WHERE aircraftId=? AND ${active} AND COALESCE(actual,scheduled)>=?`,
+        [existing.id, new Date(Date.now() - 30 * 60000).toISOString()],
+      );
       ensure(
         !(assigned && (item.status !== 'available' || item.airlineId !== existing.airlineId)),
         'Realocar ou cancelar os voos ativos antes de indisponibilizar esta aeronave.',
       );
-      const reservations = db
-        .prepare(
-          "SELECT r.seat FROM reservations r JOIN flights f ON f.id=r.flightId WHERE f.aircraftId=? AND r.status!='cancelled' AND f.status NOT IN ('cancelled','landed')",
-        )
-        .all(existing.id);
+      const reservations = await db.all(
+        "SELECT r.seat FROM reservations r JOIN flights f ON f.id=r.flightId WHERE f.aircraftId=? AND r.status!='cancelled' AND f.status NOT IN ('cancelled','landed')",
+        [existing.id],
+      );
       ensure(
         reservations.every((r) => seatIndex(r.seat) < item.capacity),
         'A capacidade informada excluiria assentos ja reservados.',
@@ -131,9 +127,9 @@ function validateBusiness(db, table, item, existing) {
     }
   }
   if (table === 'flights') {
-    const aircraft = record(db, 'aircraft', item.aircraftId),
-      gate = record(db, 'gates', item.gateId),
-      airline = record(db, 'airlines', item.airlineId);
+    const aircraft = await record(db, 'aircraft', item.aircraftId),
+      gate = await record(db, 'gates', item.gateId),
+      airline = await record(db, 'airlines', item.airlineId);
     ensure(
       aircraft.airlineId === airline.id,
       'A aeronave deve pertencer a companhia selecionada.',
@@ -175,9 +171,10 @@ function validateBusiness(db, table, item, existing) {
         existing.status !== 'cancelled' && existing.status !== 'landed',
         'Voos encerrados ou cancelados nao podem ser alterados.',
       );
-      const booked = db
-        .prepare("SELECT seat FROM reservations WHERE flightId=? AND status!='cancelled'")
-        .all(existing.id);
+      const booked = await db.all(
+        "SELECT seat FROM reservations WHERE flightId=? AND status!='cancelled'",
+        [existing.id],
+      );
       ensure(
         booked.every((r) => seatIndex(r.seat) < aircraft.capacity),
         'A nova aeronave nao comporta os assentos reservados.',
@@ -193,17 +190,19 @@ function validateBusiness(db, table, item, existing) {
         'Aeronave indisponivel ou em manutencao. Escolha outra aeronave.',
       );
       ensure(gate.status === 'available', 'Portao bloqueado. Selecione um portao disponivel.');
-      const sameGate = db
-        .prepare(`SELECT * FROM flights WHERE gateId=? AND id!=? AND ${active}`)
-        .all(item.gateId, existing?.id || '');
+      const sameGate = await db.all(
+        `SELECT * FROM flights WHERE gateId=? AND id!=? AND ${active}`,
+        [item.gateId, existing?.id || ''],
+      );
       const conflict = sameGate.find((f) => gateOverlap(f, item));
       ensure(
         !conflict,
         `Conflito de portao: ${conflict?.number} ja ocupa este portao. Reserve um intervalo de 90 minutos entre voos.`,
       );
-      const sameAircraft = db
-        .prepare(`SELECT * FROM flights WHERE aircraftId=? AND id!=? AND ${active}`)
-        .all(item.aircraftId, existing?.id || '');
+      const sameAircraft = await db.all(
+        `SELECT * FROM flights WHERE aircraftId=? AND id!=? AND ${active}`,
+        [item.aircraftId, existing?.id || ''],
+      );
       const clash = sameAircraft.find(
         (f) =>
           flightTime(item) < flightTime(f) + (f.duration + 60) * 60000 &&
@@ -217,33 +216,36 @@ function validateBusiness(db, table, item, existing) {
   }
 }
 
-export function saveEntity(db, user, table, raw, id) {
+export async function saveEntity(db, user, table, raw, id) {
   ensure(tables.includes(table), 'Operacao inexistente.', 404);
   authorize(user, table);
   const item = schemas[table].parse(raw);
-  return transaction(db, () => {
-    const existing = id ? record(db, table, id) : null;
+  return transaction(db, async () => {
+    const existing = id ? await record(db, table, id) : null;
     if (existing)
       ensure(
         item.version === existing.version,
         'Este registro foi alterado por outro usuario. Atualize a pagina e tente novamente.',
       );
-    validateBusiness(db, table, item, existing);
+    await validateBusiness(db, table, item, existing);
     const { version, ...values } = item;
     const fields = Object.keys(values);
     const entityId = id || randomUUID();
     if (existing)
-      db.prepare(
+      await db.execute(
         `UPDATE ${table} SET ${fields.map((f) => `${f}=?`).join(',')},version=version+1 WHERE id=?`,
-      ).run(...Object.values(values), id);
+        [...Object.values(values), id],
+      );
     else
-      db.prepare(
+      await db.execute(
         `INSERT INTO ${table}(id,${fields.join(',')}) VALUES (${['?', ...fields.map(() => '?')].join(',')})`,
-      ).run(entityId, ...Object.values(values));
+        [entityId, ...Object.values(values)],
+      );
     if (table === 'flights' && item.status === 'cancelled') {
-      db.prepare(
+      await db.execute(
         "UPDATE reservations SET status='cancelled',version=version+1 WHERE flightId=? AND status!='cancelled'",
-      ).run(entityId);
+        [entityId],
+      );
     }
     const identifier = item.number || item.name || item.code || item.registration;
     const sensitive = new Set(['document', 'birthDate', 'email', 'phone']);
@@ -257,7 +259,7 @@ export function saveEntity(db, user, table, raw, id) {
           )
           .join('; ')
       : 'Novo registro';
-    audit(
+    await audit(
       db,
       user,
       existing ? 'Alteracao' : 'Cadastro',
@@ -265,7 +267,7 @@ export function saveEntity(db, user, table, raw, id) {
       entityId,
       `${labels[table]} ${identifier}. ${changed}`,
     );
-    return record(db, table, entityId);
+    return await record(db, table, entityId);
   });
 }
 
@@ -274,13 +276,13 @@ export function seatIndex(seat) {
   return match ? (Number(match[1]) - 1) * 6 + 'ABCDEF'.indexOf(match[2]) : Infinity;
 }
 
-export function createReservation(db, user, raw) {
+export async function createReservation(db, user, raw) {
   authorize(user, 'reservations');
   const item = schemas.reservations.parse(raw);
-  return transaction(db, () => {
-    record(db, 'passengers', item.passengerId);
-    const flight = record(db, 'flights', item.flightId),
-      aircraft = record(db, 'aircraft', flight.aircraftId);
+  return transaction(db, async () => {
+    await record(db, 'passengers', item.passengerId);
+    const flight = await record(db, 'flights', item.flightId),
+      aircraft = await record(db, 'aircraft', flight.aircraftId);
     ensure(flight.type === 'departure', 'Reservas disponiveis apenas para partidas de GRU.');
     ensure(
       ['scheduled', 'delayed', 'boarding'].includes(flight.status),
@@ -294,33 +296,34 @@ export function createReservation(db, user, raw) {
       422,
     );
     ensure(
-      !db
-        .prepare("SELECT id FROM reservations WHERE flightId=? AND seat=? AND status!='cancelled'")
-        .get(item.flightId, item.seat),
+      !(await db.one(
+        "SELECT id FROM reservations WHERE flightId=? AND seat=? AND status!='cancelled'",
+        [item.flightId, item.seat],
+      )),
       'Este assento ja esta reservado. Escolha outro.',
     );
     ensure(
-      !db
-        .prepare(
-          "SELECT id FROM reservations WHERE flightId=? AND passengerId=? AND status!='cancelled'",
-        )
-        .get(item.flightId, item.passengerId),
+      !(await db.one(
+        "SELECT id FROM reservations WHERE flightId=? AND passengerId=? AND status!='cancelled'",
+        [item.flightId, item.passengerId],
+      )),
       'O passageiro ja possui reserva neste voo.',
     );
     const id = randomUUID(),
       locator = randomBytes(5).toString('hex').slice(0, 6).toUpperCase();
-    db.prepare(
+    await db.execute(
       'INSERT INTO reservations(id,locator,passengerId,flightId,seat,status,createdAt) VALUES (?,?,?,?,?,?,?)',
-    ).run(
-      id,
-      locator,
-      item.passengerId,
-      item.flightId,
-      item.seat,
-      'confirmed',
-      new Date().toISOString(),
+      [
+        id,
+        locator,
+        item.passengerId,
+        item.flightId,
+        item.seat,
+        'confirmed',
+        new Date().toISOString(),
+      ],
     );
-    audit(
+    await audit(
       db,
       user,
       'Reserva',
@@ -328,15 +331,15 @@ export function createReservation(db, user, raw) {
       id,
       `Reserva ${locator}: ${flight.number}, assento ${item.seat}.`,
     );
-    return record(db, 'reservations', id);
+    return await record(db, 'reservations', id);
   });
 }
 
-export function updateReservation(db, user, id, action, version) {
+export async function updateReservation(db, user, id, action, version) {
   authorize(user, action === 'checkin' ? 'checkin' : 'reservations');
-  return transaction(db, () => {
-    const reservation = record(db, 'reservations', id),
-      flight = record(db, 'flights', reservation.flightId);
+  return transaction(db, async () => {
+    const reservation = await record(db, 'reservations', id),
+      flight = await record(db, 'flights', reservation.flightId);
     ensure(
       version === reservation.version,
       'Reserva alterada por outro usuario. Atualize a pagina.',
@@ -355,13 +358,14 @@ export function updateReservation(db, user, id, action, version) {
         'Check-in disponivel nas 48 horas anteriores a partida.',
       );
       ensure(
-        record(db, 'aircraft', flight.aircraftId).status === 'available',
+        (await record(db, 'aircraft', flight.aircraftId)).status === 'available',
         'Aeronave indisponivel para check-in.',
       );
-      db.prepare(
+      await db.execute(
         "UPDATE reservations SET status='checked_in',checkedAt=?,version=version+1 WHERE id=?",
-      ).run(new Date().toISOString(), id);
-      audit(
+        [new Date().toISOString(), id],
+      );
+      await audit(
         db,
         user,
         'Check-in',
@@ -374,8 +378,10 @@ export function updateReservation(db, user, id, action, version) {
         flight.status !== 'landed' && flightTime(flight) > Date.now(),
         'Nao e possivel cancelar uma reserva de voo encerrado.',
       );
-      db.prepare("UPDATE reservations SET status='cancelled',version=version+1 WHERE id=?").run(id);
-      audit(
+      await db.execute("UPDATE reservations SET status='cancelled',version=version+1 WHERE id=?", [
+        id,
+      ]);
+      await audit(
         db,
         user,
         'Cancelamento',
@@ -384,11 +390,11 @@ export function updateReservation(db, user, id, action, version) {
         `Reserva ${reservation.locator} cancelada.`,
       );
     }
-    return record(db, 'reservations', id);
+    return await record(db, 'reservations', id);
   });
 }
 
-export function csvExport(db, user, table, day) {
+export async function csvExport(db, user, table, day) {
   ensure(
     ['flights', 'passengers', 'airlines', 'audit'].includes(table),
     'Relatorio inexistente.',
@@ -397,29 +403,25 @@ export function csvExport(db, user, table, day) {
   if (table === 'passengers') authorize(user, 'passengers');
   let rows;
   if (table === 'flights')
-    rows = db
-      .prepare(
-        "SELECT f.number AS voo,a.name AS companhia,f.origin AS origem,f.destination AS destino,f.scheduled AS previsto,f.actual AS real,g.code AS portao,f.status AS status FROM flights f JOIN airlines a ON a.id=f.airlineId JOIN gates g ON g.id=f.gateId WHERE date(f.scheduled,'-3 hours')=? ORDER BY f.scheduled",
-      )
-      .all(day || today());
+    rows = await db.all(
+      "SELECT f.number AS voo,a.name AS companhia,f.origin AS origem,f.destination AS destino,f.scheduled AS previsto,f.actual AS real,g.code AS portao,f.status AS status FROM flights f JOIN airlines a ON a.id=f.airlineId JOIN gates g ON g.id=f.gateId WHERE (f.scheduled::timestamptz AT TIME ZONE 'America/Sao_Paulo')::date=?::date ORDER BY f.scheduled",
+      [day || today()],
+    );
   else if (table === 'passengers')
-    rows = db
-      .prepare(
-        'SELECT name AS nome,email,phone AS telefone,nationality AS nacionalidade FROM passengers ORDER BY name',
-      )
-      .all();
+    rows = await db.all(
+      'SELECT name AS nome,email,phone AS telefone,nationality AS nacionalidade FROM passengers ORDER BY name',
+      [],
+    );
   else if (table === 'airlines')
-    rows = db
-      .prepare(
-        'SELECT name AS companhia,code AS codigo,country AS pais,contact AS contato FROM airlines ORDER BY name',
-      )
-      .all();
+    rows = await db.all(
+      'SELECT name AS companhia,code AS codigo,country AS pais,contact AS contato FROM airlines ORDER BY name',
+      [],
+    );
   else
-    rows = db
-      .prepare(
-        'SELECT a.createdAt AS data,u.name AS usuario,a.action AS acao,a.entity AS entidade,a.detail AS detalhe FROM audit a JOIN users u ON u.id=a.userId ORDER BY a.createdAt DESC',
-      )
-      .all();
+    rows = await db.all(
+      'SELECT a.createdAt AS data,u.name AS usuario,a.action AS acao,a.entity AS entidade,a.detail AS detalhe FROM audit a JOIN users u ON u.id=a.userId ORDER BY a.createdAt DESC',
+      [],
+    );
   const quote = (value) =>
     `"${String(value ?? '')
       .replace(/^[=+@-]/, "'$&")

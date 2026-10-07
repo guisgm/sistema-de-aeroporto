@@ -17,21 +17,40 @@ public abstract class Pessoa {
         this.ativa = ativa;
     }
 
-    public final long id() { return id; }
-    public final String nome() { return nome; }
-    public final LocalDate nascimento() { return nascimento; }
-    public final boolean ativa() { return ativa; }
+    public final long id() {
+        return id;
+    }
+
+    public final String nome() {
+        return nome;
+    }
+
+    public final LocalDate nascimento() {
+        return nascimento;
+    }
+
+    public final boolean ativa() {
+        return ativa;
+    }
+
     public abstract String identificacao();
 
     @Override
     public final boolean equals(Object outro) {
         // A mesma pessoa pode ter os dois papéis; a identidade comum é pessoa.id.
-        return this == outro || outro instanceof Pessoa pessoa && id == pessoa.id;
+        if (this == outro) return true;
+        if (!(outro instanceof Pessoa)) return false;
+        Pessoa pessoa = (Pessoa) outro;
+        return id == pessoa.id;
     }
 
     @Override
-    public final int hashCode() { return Long.hashCode(id); }
+    public final int hashCode() {
+        return Long.hashCode(id);
+    }
 
     @Override
-    public String toString() { return identificacao() + " — " + nome; }
+    public String toString() {
+        return identificacao() + " — " + nome;
+    }
 }

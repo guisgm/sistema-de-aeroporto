@@ -2,6 +2,7 @@ package br.edu.aeroporto.infraestrutura.jdbc;
 
 import br.edu.aeroporto.config.Configuracao;
 import br.edu.aeroporto.excecao.PersistenciaException;
+
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -28,7 +29,8 @@ public final class BancoDados {
                 return transacao(operacao);
             } catch (PersistenciaException erro) {
                 String estado = ((SQLException) erro.getCause()).getSQLState();
-                if (tentativa >= 2 || !("40P01".equals(estado) || "40001".equals(estado))) throw erro;
+                if (tentativa >= 2 || !("40P01".equals(estado) || "40001".equals(estado)))
+                    throw erro;
             }
         }
     }
@@ -36,7 +38,8 @@ public final class BancoDados {
     private <T> T executar(OperacaoSql<T> operacao, boolean somenteLeitura) {
         try (Connection conexao = abrir()) {
             conexao.setReadOnly(somenteLeitura);
-            if (somenteLeitura) conexao.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
+            if (somenteLeitura)
+                conexao.setTransactionIsolation(Connection.TRANSACTION_REPEATABLE_READ);
             conexao.setAutoCommit(false);
             try {
                 T resultado = operacao.executar(conexao);

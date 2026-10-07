@@ -1,6 +1,7 @@
 package br.edu.aeroporto.cli;
 
 import java.io.Console;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.Scanner;
@@ -30,7 +31,8 @@ public final class Terminal implements AutoCloseable {
             if (senha == null) throw new FimDaEntrada();
             return senha;
         }
-        System.out.println("Este terminal não oferece entrada oculta; a senha ficará visível ao digitar.");
+        System.out.println(
+                "Este terminal não oferece entrada oculta; a senha ficará visível ao digitar.");
         return lerBruto(rotulo).toCharArray();
     }
 
@@ -69,39 +71,53 @@ public final class Terminal implements AutoCloseable {
     }
 
     public java.time.Instant instante(String rotulo) {
-        while(true) {
-            try { return java.time.OffsetDateTime.parse(ler(rotulo+" (AAAA-MM-DDTHH:mm:ss-03:00)")).toInstant(); }
-            catch(java.time.DateTimeException erro) { System.out.println("Horario invalido; inclua o fuso."); }
+        while (true) {
+            try {
+                return java.time.OffsetDateTime.parse(ler(rotulo + " (AAAA-MM-DDTHH:mm:ss-03:00)"))
+                        .toInstant();
+            } catch (java.time.DateTimeException erro) {
+                System.out.println("Horario invalido; inclua o fuso.");
+            }
         }
     }
 
     public java.math.BigDecimal decimal(String rotulo) {
-        while(true) {
-            try { var valor=new java.math.BigDecimal(ler(rotulo).replace(',','.'));if(valor.signum()>=0 && valor.scale()<=2) return valor; }
-            catch(NumberFormatException erro) { }
+        while (true) {
+            try {
+                BigDecimal valor = new java.math.BigDecimal(ler(rotulo).replace(',', '.'));
+                if (valor.signum() >= 0 && valor.scale() <= 2) return valor;
+            } catch (NumberFormatException erro) {
+            }
             System.out.println("Informe valor nao negativo com ate duas casas decimais.");
         }
     }
 
     public Long idOpcional(String rotulo) {
-        while(true) {
-            String texto=ler(rotulo+" (vazio se nao se aplica)");if(texto.isBlank()) return null;
-            try { long id=Long.parseLong(texto);if(id>0) return id; } catch(NumberFormatException erro) { }
+        while (true) {
+            String texto = ler(rotulo + " (vazio se nao se aplica)");
+            if (texto.isBlank()) return null;
+            try {
+                long id = Long.parseLong(texto);
+                if (id > 0) return id;
+            } catch (NumberFormatException erro) {
+            }
             System.out.println("Informe id positivo ou deixe vazio.");
         }
     }
 
     public boolean sim(String rotulo) {
-        while(true) {
-            String texto=ler(rotulo+" (s/n)");
-            if(texto.equalsIgnoreCase("s")) return true;
-            if(texto.equalsIgnoreCase("n")) return false;
+        while (true) {
+            String texto = ler(rotulo + " (s/n)");
+            if (texto.equalsIgnoreCase("s")) return true;
+            if (texto.equalsIgnoreCase("n")) return false;
             System.out.println("Informe s ou n.");
         }
     }
 
     @Override
-    public void close() { entrada.close(); }
+    public void close() {
+        entrada.close();
+    }
 
     public static final class FimDaEntrada extends RuntimeException {}
 }

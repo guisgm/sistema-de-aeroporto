@@ -1,12 +1,13 @@
 import { openDatabase, transaction, today } from '../server/database.mjs';
 import { audit } from '../server/operations.mjs';
 
-const db = openDatabase(process.env.DB_PATH || 'data/aerohub.sqlite');
+const db = await openDatabase();
 try {
-  const flights = db
-    .prepare("SELECT * FROM flights WHERE id LIKE 'flight-0-%' AND version=1")
-    .all();
-  const count = transaction(db, () => {
+  const flights = await db.all(
+    "SELECT * FROM flights WHERE id LIKE 'flight-0-%' AND version=1",
+    [],
+  );
+  const count = await transaction(db, async () => {
     let changed = 0;
     for (const flight of flights) {
       const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(
@@ -24,19 +25,20 @@ try {
               ? 'boarding'
               : 'scheduled';
       if (status === flight.status) continue;
-      db.prepare('UPDATE flights SET status=?,actual=? WHERE id=?').run(
+      await db.execute('UPDATE flights SET status=?,actual=? WHERE id=?', [
         status,
         flight.actual || (status === 'landed' ? flight.scheduled : null),
         flight.id,
-      );
+      ]);
       if (status === 'landed')
-        db.prepare(
+        await db.execute(
           "UPDATE reservations SET status='checked_in',checkedAt=? WHERE flightId=? AND id LIKE 'reservation-%' AND version=1 AND status='confirmed'",
-        ).run(new Date(Date.parse(flight.scheduled) - 30 * 60000).toISOString(), flight.id);
+          [new Date(Date.parse(flight.scheduled) - 30 * 60000).toISOString(), flight.id],
+        );
       changed++;
     }
     if (changed)
-      audit(
+      await audit(
         db,
         { id: 'admin' },
         'Simulacao',
@@ -48,5 +50,5 @@ try {
   });
   console.log(`${count} voos de demonstracao sincronizados.`);
 } finally {
-  db.close();
+  await db.close();
 }

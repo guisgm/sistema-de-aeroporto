@@ -8,7 +8,7 @@ Mostrar o terminal Java com PostgreSQL e a modelagem de 41 tabelas. Explicar que
 
 ## 2. Orientacao a objetos
 
-Abrir Pessoa, Passageiro e Funcionario: classe abstrata, heranca, encapsulamento, identidade comum e sobrescrita. Mostrar ExportadorVoos e implementacoes TXT/CSV para polimorfismo. Mostrar os records de programacao, tarifa e pedidos de trechos e a separacao entre menu, servico e persistencia.
+Abrir Pessoa, Passageiro e Funcionario: classe abstrata, heranca, encapsulamento, identidade comum e sobrescrita. Mostrar ExportadorVoos e implementacoes TXT/CSV para polimorfismo. Mostrar as classes de programacao, tarifa e pedidos de trechos, com atributos privados, construtores e metodos de leitura, e a separacao entre menu, servico e persistencia.
 
 ## 3. Arrays, matrizes, colecoes e strings
 

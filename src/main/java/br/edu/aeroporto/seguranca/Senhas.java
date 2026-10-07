@@ -5,6 +5,7 @@ import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Base64;
+
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
@@ -19,8 +20,12 @@ public final class Senhas {
         ALEATORIO.nextBytes(sal);
         byte[] hash = derivar(senha, sal, ITERACOES);
         try {
-            return "pbkdf2-sha256$" + ITERACOES + "$" + Base64.getEncoder().encodeToString(sal)
-                    + "$" + Base64.getEncoder().encodeToString(hash);
+            return "pbkdf2-sha256$"
+                    + ITERACOES
+                    + "$"
+                    + Base64.getEncoder().encodeToString(sal)
+                    + "$"
+                    + Base64.getEncoder().encodeToString(hash);
         } finally {
             Arrays.fill(hash, (byte) 0);
         }
@@ -34,7 +39,10 @@ public final class Senhas {
             int iteracoes = Integer.parseInt(partes[1]);
             byte[] sal = Base64.getDecoder().decode(partes[2]);
             byte[] esperado = Base64.getDecoder().decode(partes[3]);
-            if (iteracoes < 100_000 || iteracoes > 2_000_000 || sal.length < 16 || esperado.length != 32) return false;
+            if (iteracoes < 100_000
+                    || iteracoes > 2_000_000
+                    || sal.length < 16
+                    || esperado.length != 32) return false;
             calculado = derivar(senha, sal, iteracoes);
             return MessageDigest.isEqual(esperado, calculado);
         } catch (IllegalArgumentException formatoInvalido) {
@@ -47,9 +55,12 @@ public final class Senhas {
     private static byte[] derivar(char[] senha, byte[] sal, int iteracoes) {
         PBEKeySpec chave = new PBEKeySpec(senha, sal, iteracoes, 256);
         try {
-            return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256").generateSecret(chave).getEncoded();
+            return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+                    .generateSecret(chave)
+                    .getEncoded();
         } catch (GeneralSecurityException erro) {
-            throw new IllegalStateException("O ambiente Java não suporta o algoritmo de senha.", erro);
+            throw new IllegalStateException(
+                    "O ambiente Java não suporta o algoritmo de senha.", erro);
         } finally {
             chave.clearPassword();
         }

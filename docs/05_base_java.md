@@ -62,11 +62,11 @@ src/main/java/br/edu/aeroporto/
 
 ### Domínio e dados
 
-Pessoa é uma classe abstrata com estado encapsulado e imutável. Passageiro e Funcionario sobrescrevem identificacao, mantendo o id comum de pessoa. Uma mesma pessoa nos dois papéis é igual por id; não há objetos de domínio com id provisório. Os pedidos de cadastro usam record separado da entidade persistida.
+Pessoa é uma classe abstrata com estado encapsulado e imutável. Passageiro e Funcionario sobrescrevem identificacao, mantendo o id comum de pessoa. Uma mesma pessoa nos dois papéis é igual por id; não há objetos de domínio com id provisório. Os pedidos de cadastro usam classes separadas da entidade persistida, com atributos, construtores e métodos de leitura explícitos.
 
 SituacaoVoo e SituacaoReserva são enums que coincidem com o banco. VooServico usa a regra de transição junto às validações de janela, equipe, portão, serviços de solo, agendas e histórico. ProgramacaoVoo, Tarifa e PedidoTrecho são contratos de entrada validados; MapaAssentos usa uma matriz real de apresentação sem substituir a persistência relacional.
 
-Resultados de consulta usam records. Dinheiro é BigDecimal; datas civis são LocalDate; TIMESTAMPTZ é lido como OffsetDateTime. O painel usa o fuso da configuração para filtrar um dia inteiro e os fusos dos aeroportos para exibir os horários. A conexão também recebe esse fuso para os cálculos de CURRENT_DATE. Datas inválidas de entrada são tratadas no terminal; nascimento futuro é rejeitado no serviço.
+Resultados de consulta usam classes DTO com campos privados e métodos de leitura. Dinheiro é BigDecimal; datas civis são LocalDate; TIMESTAMPTZ é lido como OffsetDateTime. O painel usa o fuso da configuração para filtrar um dia inteiro e os fusos dos aeroportos para exibir os horários. A conexão também recebe esse fuso para os cálculos de CURRENT_DATE. Datas inválidas de entrada são tratadas no terminal; nascimento futuro é rejeitado no serviço. A simplificação e os recursos de infraestrutura preservados estão em [11_simplificacao_java.md](11_simplificacao_java.md).
 
 ### Persistência e transações
 
@@ -121,6 +121,6 @@ Os seis grupos acima foram implementados e exercitados nos testes PostgreSQL. O 
 
 ## Validação desta entrega
 
-Compilação para Java 21 com JDK 26, ajuda, 12 verificações unitárias e 103 verificações em PostgreSQL 17.11 isolado foram executadas com sucesso. Primeiro acesso, login real pelo terminal, fluxo completo, restrições, relatórios, arquivos, concorrência e deadlock real foram exercitados. O script de integração criou um banco novo e encerrou somente seu servidor temporário. Depois dessa rodada, foram acrescentados testes complementares de equipe, frota, pagamentos, peças de bagagem e rascunho; a ferramenta de aprovação atingiu limite de uso e impediu compilação/execução dessa ampliação. Esses testes novos não são resultados aprovados. O diagnóstico do banco do usuário confirmou configuração ausente; essa conexão continua pendente e nenhuma senha do DBeaver foi lida. Resultados e limitações: [07_verificacao_lista.md](07_verificacao_lista.md).
+Compilação com JDK 21, 12 verificações unitárias e 129 verificações em PostgreSQL 18.4 isolado foram executadas com sucesso. Primeiro acesso, login e cadastros pelo terminal, fluxo completo, restrições, relatórios, arquivos, concorrência, deadlock e os testes complementares de equipe, frota, rotas, pagamentos, bagagens e rascunho foram aprovados. A web também passou 27 testes PostgreSQL e 4 testes de navegador. O script encerra e remove seu próprio cluster temporário. O banco real do usuário ainda depende das credenciais. Resultados e limitações: [07_verificacao_lista.md](07_verificacao_lista.md).
 
 Referências: [pgJDBC e versões do driver](https://jdbc.postgresql.org/download/) e [Maven Compiler Plugin](https://maven.apache.org/plugins/maven-compiler-plugin/).

@@ -1,18 +1,19 @@
+import { testDatabase } from './helpers/postgres.mjs';
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { openDatabase } from '../server/database.mjs';
+
 import { createApp } from '../server/app.mjs';
 
 let db, server, url, cookie, csrf;
 before(async () => {
-  db = openDatabase(':memory:');
+  db = await testDatabase();
   server = createApp(db).listen(0, '127.0.0.1');
   await new Promise((resolve) => server.once('listening', resolve));
   url = `http://127.0.0.1:${server.address().port}`;
 });
 after(async () => {
   await new Promise((resolve) => server.close(resolve));
-  db.close();
+  await db.close();
 });
 test('unauthenticated requests are rejected', async () => {
   const res = await fetch(`${url}/api/state`);
@@ -81,7 +82,7 @@ test('validation errors and duplicate codes are returned without database detail
     body: JSON.stringify({ code: 'A01', terminalId: 't1', status: 'available' }),
   });
   assert.equal(res.status, 409);
-  assert.ok(!(await res.json()).message.includes('SQLite'));
+  assert.ok(!(await res.json()).message.includes('23505'));
 });
 test('export uses a downloadable CSV and logout invalidates session', async () => {
   const exported = await fetch(`${url}/api/export/flights`, { headers: { Cookie: cookie } });
